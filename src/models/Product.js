@@ -1,142 +1,341 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
 
-const productSchema = new mongoose.Schema(
-  {
+const productSchema = new mongoose.Schema({
+    // Basic Information
     name: {
-      type: String,
-      required: [true, "Product name is required"],
-      trim: true,
-      maxlength: [100, "Name cannot exceed 100 characters"],
+        type: String,
+        required: [true, 'Product name is required'],
+        trim: true,
+        maxlength: [100, 'Name cannot exceed 100 characters']
     },
-    slug: {
-      type: String,
-      unique: true,
-      lowercase: true,
-    },
+    
     description: {
-      type: String,
-      required: [true, "Description is required"],
-      maxlength: [2000, "Description cannot exceed 2000 characters"],
+        type: String,
+        required: [true, 'Description is required'],
+        trim: true
     },
+    
     shortDescription: {
-      type: String,
-      maxlength: [200, "Short description cannot exceed 200 characters"],
+        type: String,
+        trim: true,
+        maxlength: [200, 'Short description cannot exceed 200 characters']
     },
+    
+    // Pricing
     price: {
-      type: Number,
-      required: [true, "Price is required"],
-      min: [0, "Price cannot be negative"],
+        type: Number,
+        required: [true, 'Price is required'],
+        min: [0, 'Price cannot be negative']
     },
+    
     discountPrice: {
-      type: Number,
-      min: [0, "Discount price cannot be negative"],
-      validate: {
-        validator: function (value) {
-          return !value || value < this.price;
-        },
-        message: "Discount price must be less than regular price",
-      },
+        type: Number,
+        min: [0, 'Discount price cannot be negative'],
+        validate: {
+            validator: function(value) {
+                return !value || value < this.price;
+            },
+            message: 'Discount price must be less than regular price'
+        }
     },
+    
+    currency: {
+        type: String,
+        default: 'BDT',
+        uppercase: true,
+        trim: true
+    },
+    
+    // Category
     category: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Category",
-      required: [true, "Category is required"],
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Category',
+        required: [true, 'Category is required']
     },
-    images: [
-      {
-        type: String, // base64 images
-        required: [true, "At least one image is required"],
-      },
-    ],
+    
+    // Images - Base64 strings
+    mainImage: {
+        type: String,
+        required: [true, 'Main image is required']
+    },
+    
+    images: [{
+        type: String,
+        validate: {
+            validator: function(v) {
+                return /^data:image\/(jpeg|jpg|png|gif|webp);base64,/.test(v);
+            },
+            message: 'Invalid image format. Must be base64 encoded image'
+        }
+    }],
+    
+    // Inventory
     stock: {
-      type: Number,
-      required: [true, "Stock is required"],
-      min: [0, "Stock cannot be negative"],
-      default: 0,
+        type: Number,
+        required: [true, 'Stock is required'],
+        min: [0, 'Stock cannot be negative'],
+        default: 0
     },
-    // Game/Toys specific fields
+    
+    availability: {
+        type: String,
+        enum: ['in-stock', 'out-of-stock', 'pre-order', 'coming-soon'],
+        default: 'in-stock'
+    },
+    
+    // Product Type
     type: {
-      type: String,
-      enum: ["game", "toy", "accessory", "console", "board-game", "card-game"],
-      required: true,
+        type: String,
+        enum: ['game', 'toy', 'accessory', 'console', 'board-game', 'card-game'],
+        required: [true, 'Product type is required']
     },
-    platform: {
-      type: [String], // For games: ['PS5', 'Xbox', 'Nintendo Switch', 'PC', 'Mobile']
-      default: [],
-    },
-    genre: {
-      type: [String], // ['Action', 'Adventure', 'RPG', 'Strategy', 'Racing', 'Sports']
-      default: [],
-    },
+    
+    // Gaming Specific Fields
+    platform: [{
+        type: String,
+        enum: ['PS5', 'PS4', 'Xbox Series X', 'Xbox Series S', 'Xbox One', 'Nintendo Switch', 'PC', 'Mobile', 'VR']
+    }],
+    
+    genre: [{
+        type: String,
+        enum: ['Action', 'Adventure', 'RPG', 'Strategy', 'Racing', 'Sports', 'Shooter', 'Fighting', 'Puzzle', 'Simulation', 'Horror', 'Open World']
+    }],
+    
+    // Age and Players
     ageRange: {
-      min: { type: Number, default: 3 },
-      max: { type: Number, default: 99 },
+        min: { type: Number, default: 3, min: 0, max: 18 },
+        max: { type: Number, default: 99, min: 3, max: 99 }
     },
+    
     players: {
-      min: { type: Number, default: 1 },
-      max: { type: Number, default: 4 },
+        min: { type: Number, default: 1, min: 1 },
+        max: { type: Number, default: 1, min: 1 }
     },
-    brand: String,
-    publisher: String,
-    releaseDate: Date,
-
-    // Product details
-    features: [String],
-    specifications: Map,
-    weight: Number,
+    
+    // Brand and Publishing
+    brand: {
+        type: String,
+        trim: true
+    },
+    
+    publisher: {
+        type: String,
+        trim: true
+    },
+    
+    releaseDate: {
+        type: Date
+    },
+    
+    // Features and Specifications
+    features: [{
+        type: String,
+        trim: true
+    }],
+    
+    specifications: {
+        type: Map,
+        of: String
+    },
+    
+    // Physical Details
+    weight: {
+        type: Number,
+        min: 0
+    },
+    
     dimensions: {
-      length: Number,
-      width: Number,
-      height: Number,
-      unit: { type: String, default: "cm" },
+        length: { type: Number, min: 0 },
+        width: { type: Number, min: 0 },
+        height: { type: Number, min: 0 },
+        unit: { type: String, default: 'cm', enum: ['cm', 'inch', 'mm'] }
     },
-
-    // Ratings and reviews
-    ratings: {
-      average: { type: Number, default: 0, min: 0, max: 5 },
-      count: { type: Number, default: 0 },
+    
+    // ====================================
+    // OFFER FIELDS - ONE PRODUCT, ONE OFFER
+    // ====================================
+    offerType: {
+        type: String,
+        enum: ['hot-deal', 'best-deal', 'special-offer', 'flash-sale', 'featured', 'none'],
+        default: 'none'
     },
-
-    // Metadata
+    
+    offerBadge: {
+        type: String,
+        enum: ['Hot', 'Best Deal', 'Special', 'Sale', 'Limited', 'New', 'none'],
+        default: 'none'
+    },
+    
+    offerBadgeColor: {
+        type: String,
+        enum: ['red', 'blue', 'green', 'orange', 'purple', 'yellow'],
+        default: 'red'
+    },
+    
+    offerPriority: {
+        type: Number,
+        min: 1,
+        max: 10,
+        default: 5
+    },
+    
+    // Sale Information (only if on sale)
+    isOnSale: {
+        type: Boolean,
+        default: false
+    },
+    
+    discountPercentage: {
+        type: Number,
+        min: 0,
+        max: 100,
+        default: 0
+    },
+    
+    saleStartDate: {
+        type: Date
+    },
+    
+    saleEndDate: {
+        type: Date
+    },
+    
+    // For flash sales only
+    flashSaleQuantity: {
+        type: Number,
+        min: 0,
+        default: 0
+    },
+    
+    flashSaleSold: {
+        type: Number,
+        min: 0,
+        default: 0
+    },
+    
+    // Product Identifiers
+    sku: {
+        type: String,
+        unique: true,
+        sparse: true,
+        trim: true,
+        uppercase: true
+    },
+    
+    rating: {
+        type: String,
+        trim: true
+    },
+    
+    storageRequired: {
+        type: String,
+        trim: true
+    },
+    
+    // Status Flags
     isFeatured: {
-      type: Boolean,
-      default: false,
+        type: Boolean,
+        default: false
     },
+    
     isActive: {
-      type: Boolean,
-      default: true,
+        type: Boolean,
+        default: true
     },
-    tags: [String],
-
-    // SEO
-    metaTitle: String,
-    metaDescription: String,
-    metaKeywords: [String],
-  },
-  {
+    
+    // Search and SEO
+    tags: [{
+        type: String,
+        trim: true,
+        lowercase: true
+    }],
+    
+    metaTitle: {
+        type: String,
+        trim: true,
+        maxlength: [60, 'Meta title should be under 60 characters']
+    },
+    
+    metaDescription: {
+        type: String,
+        trim: true,
+        maxlength: [160, 'Meta description should be under 160 characters']
+    },
+    
+    metaKeywords: [{
+        type: String,
+        trim: true,
+        lowercase: true
+    }],
+    
+    // Analytics
+    views: {
+        type: Number,
+        default: 0
+    },
+    
+    soldCount: {
+        type: Number,
+        default: 0
+    }
+}, {
     timestamps: true,
     toJSON: { virtuals: true },
-    toObject: { virtuals: true },
-  },
-);
-
-// Virtual for reviews
-productSchema.virtual("reviews", {
-  ref: "Review",
-  localField: "_id",
-  foreignField: "product",
+    toObject: { virtuals: true }
 });
 
-// Create slug before save
-productSchema.pre("save", function (next) {
-  this.slug = this.name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-  next();
+// Virtual to check if deal is active
+productSchema.virtual('isDealActive').get(function() {
+    if (!this.isOnSale || this.offerType === 'none') return false;
+    
+    const now = new Date();
+    if (this.saleStartDate && this.saleEndDate) {
+        return now >= this.saleStartDate && now <= this.saleEndDate;
+    }
+    
+    return this.isOnSale;
+});
+
+// Virtual for final price after discount
+productSchema.virtual('finalPrice').get(function() {
+    if (this.discountPrice) {
+        return this.discountPrice;
+    }
+    if (this.discountPercentage && this.discountPercentage > 0) {
+        return this.price * (1 - this.discountPercentage / 100);
+    }
+    return this.price;
+});
+
+// Virtual for offer badge display
+productSchema.virtual('offerDisplay').get(function() {
+    if (this.offerType === 'none') return null;
+    return {
+        type: this.offerType,
+        badge: this.offerBadge,
+        color: this.offerBadgeColor,
+        priority: this.offerPriority
+    };
 });
 
 // Index for search
-productSchema.index({ name: "text", description: "text", tags: "text" });
+productSchema.index({ name: 'text', description: 'text', tags: 'text' });
+productSchema.index({ category: 1, isActive: 1 });
+productSchema.index({ price: 1, createdAt: -1 });
+productSchema.index({ offerType: 1, offerPriority: -1 });
+productSchema.index({ sku: 1 }, { unique: true, sparse: true });
 
-module.exports = mongoose.model("Product", productSchema);
+// Pre-save middleware to generate SKU if not provided
+productSchema.pre('save', function(next) {
+    if (!this.sku) {
+        const prefix = this.type.substring(0, 3).toUpperCase();
+        const timestamp = Date.now().toString().slice(-8);
+        const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+        this.sku = `${prefix}-${timestamp}-${random}`;
+    }
+    next();
+});
+
+const Product = mongoose.model('Product', productSchema);
+
+module.exports = Product;

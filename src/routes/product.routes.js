@@ -1,58 +1,41 @@
 const express = require('express');
 const router = express.Router();
+const {
+  createProduct,
+  getProducts,
+  getProductById,
+  updateProduct,
+  deleteProduct,
+  getProductsByCategory,
+  getFeaturedProducts,
+  searchProducts,
+  getProductsByOfferType,
+  getAllOffers,
+  getRelatedProducts,
+  getFlashSaleProducts,
+  getLatestProducts,
+  getProductsByPriceRange,
+  updateFlashSaleSold
+} = require('../controllers/product.controller');
+const { protect, authorize } = require('../middleware/auth.middleware');
 
-// Temporary product controller
-const productController = {
-  // Get all products
-  getProducts: (req, res) => {
-    res.status(200).json({ 
-      success: true,
-      message: 'Get all products', 
-      data: [] 
-    });
-  },
-  
-  // Get single product by ID
-  getProductById: (req, res) => {
-    res.status(200).json({ 
-      success: true,
-      message: `Get product with ID: ${req.params.id}`, 
-      data: null 
-    });
-  },
-  
-  // Create new product
-  createProduct: (req, res) => {
-    res.status(201).json({ 
-      success: true,
-      message: 'Product created successfully', 
-      data: req.body 
-    });
-  },
-  
-  // Update product
-  updateProduct: (req, res) => {
-    res.status(200).json({ 
-      success: true,
-      message: `Product ${req.params.id} updated successfully`, 
-      data: req.body 
-    });
-  },
-  
-  // Delete product
-  deleteProduct: (req, res) => {
-    res.status(200).json({ 
-      success: true,
-      message: `Product ${req.params.id} deleted successfully` 
-    });
-  }
-};
+// Public Routes
+router.get('/search', searchProducts);
+router.get('/featured', getFeaturedProducts);
+router.get('/flash-sale', getFlashSaleProducts);
+router.get('/offers', getAllOffers);
+router.get('/offers/:type', getProductsByOfferType);
+router.get('/category/:categoryId', getProductsByCategory);
+router.get('/latest', getLatestProducts);
+router.get('/price-range', getProductsByPriceRange);
+router.get('/:id/related', getRelatedProducts);
+router.get('/:id', getProductById);
+router.get('/', getProducts);
 
-// Routes
-router.get('/', productController.getProducts);
-router.get('/:id', productController.getProductById);
-router.post('/', productController.createProduct);
-router.put('/:id', productController.updateProduct);
-router.delete('/:id', productController.deleteProduct);
+// Protected Routes (Admin only)
+router.post('/', protect, authorize('admin'), createProduct);
+router.put('/:id', protect, authorize('admin'), updateProduct);
+router.patch('/:id/flash-sale', protect, authorize('admin'), updateFlashSaleSold);
+router.delete('/:id', protect, authorize('admin'), deleteProduct);
 
 module.exports = router;
