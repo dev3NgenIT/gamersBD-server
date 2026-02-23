@@ -84,7 +84,7 @@ app.get('/', (req, res) => {
   
   res.status(200).json({
     success: true,
-    name: 'Express API Server',
+    name: 'Gamers BD API Server',
     version: '1.0.0',
     description: 'RESTful API for authentication and product management',
     status: 'operational',
