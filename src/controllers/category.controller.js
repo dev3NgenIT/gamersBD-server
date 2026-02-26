@@ -80,22 +80,52 @@ const createCategory = async (req, res) => {
 };
 
 // Update category
+// Update category
 const updateCategory = async (req, res) => {
   try {
-    const { name, description,image, parent } = req.body;
+    const { name, description, image, parent } = req.body;
+    
+    console.log('Update request received:', { id: req.params.id, name, description, image, parent });
 
-    // Calculate new level if parent changed
-    let level;
-    if (parent) {
+    // Calculate level based on parent
+    let level = 0;
+    
+    if (parent && parent !== '') {
+      // If parent is provided and not empty, find parent category
       const parentCategory = await Category.findById(parent);
-      level = parentCategory ? parentCategory.level + 1 : 0;
+      if (parentCategory) {
+        level = parentCategory.level + 1;
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: "Parent category not found",
+        });
+      }
     }
+    // If parent is null, undefined, or empty string, level stays 0 (top-level)
+
+    // Prepare update data
+    const updateData = {
+      name,
+      description,
+      image,
+      level
+    };
+
+    // Handle parent field properly
+    if (parent === null || parent === '') {
+      updateData.parent = null; // Remove parent for top-level categories
+    } else if (parent) {
+      updateData.parent = parent; // Set new parent
+    }
+
+    console.log('Updating with data:', updateData);
 
     const category = await Category.findByIdAndUpdate(
       req.params.id,
-      { name, description,image, parent, level },
-      { new: true, runValidators: true },
-    );
+      updateData,
+      { new: true, runValidators: true }
+    ).populate('parent', 'name');
 
     if (!category) {
       return res.status(404).json({
@@ -104,12 +134,15 @@ const updateCategory = async (req, res) => {
       });
     }
 
+    console.log('Updated category:', category);
+
     res.status(200).json({
       success: true,
       message: "Category updated successfully",
       data: category,
     });
   } catch (error) {
+    console.error('Update error:', error);
     res.status(500).json({
       success: false,
       message: error.message,
