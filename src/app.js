@@ -49,7 +49,9 @@ app.use(
         : [
             "http://localhost:3000",
             "http://localhost:3001",
-            "https://gamersbd-frontend.vercel.app",
+            "https://gamersbd-frontend.vercel.app", // Removed trailing slash
+            "http://localhost:5173", // Removed trailing slash
+            "https://gamers-bd-admin.vercel.app", // Removed trailing slash
           ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: [
