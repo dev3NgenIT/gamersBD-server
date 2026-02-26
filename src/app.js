@@ -41,29 +41,49 @@ app.use(
 );
 
 // CORS configuration
-app.use(
-  cors({
-    origin:
-      process.env.NODE_ENV === "production"
-        ? process.env.ALLOWED_ORIGINS?.split(",")
-        : [
-            "http://localhost:3000",
-            "http://localhost:3001",
-            "https://gamersbd-frontend.vercel.app", // Removed trailing slash
-            "http://localhost:5173", // Removed trailing slash
-            "https://gamers-bd-admin.vercel.app", // Removed trailing slash
-          ],
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-      "Accept",
-      "X-Requested-With",
-    ],
-    credentials: true,
-    optionsSuccessStatus: 200,
-  }),
-);
+// In your main server file (app.js or server.js), update the CORS configuration:
+
+// CORS configuration - Make sure this is BEFORE your routes
+const corsOptions = {
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      "http://localhost:3000",
+      "http://localhost:3001",
+      "http://localhost:5173",
+      "https://gamersbd-frontend.vercel.app",
+      "https://gamers-bd-admin.vercel.app",
+      // Add your Render.com backend URL if needed
+      "https://gamersbd-server.onrender.com",
+    ];
+
+    // Allow requests with no origin (like mobile apps, curl, etc)
+    if (!origin) return callback(null, true);
+
+    if (
+      allowedOrigins.indexOf(origin) !== -1 ||
+      process.env.NODE_ENV === "development"
+    ) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "Accept",
+    "X-Requested-With",
+  ],
+  credentials: true,
+  optionsSuccessStatus: 200,
+  preflightContinue: false,
+};
+
+app.use(cors(corsOptions));
+
+// Add OPTIONS handling for preflight requests
+app.options("*", cors(corsOptions));
 
 // Request parsing
 app.use(express.json({ limit: "10mb" }));
