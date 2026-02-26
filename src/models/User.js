@@ -22,6 +22,44 @@ const userSchema = new mongoose.Schema({
     type: String,
     enum: ['user', 'admin'],
     default: 'user'
+  },
+  // Profile fields (optional for existing users)
+  firstName: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  lastName: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  phone: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  bio: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  avatar: {
+    type: String, // Base64 string or URL
+    default: null
+  },
+  address: {
+    country: { type: String, default: '' },
+    city: { type: String, default: '' },
+    state: { type: String, default: '' },
+    postalCode: { type: String, default: '' },
+    taxId: { type: String, default: '' }
+  },
+  social: {
+    facebook: { type: String, default: '' },
+    twitter: { type: String, default: '' },
+    linkedin: { type: String, default: '' },
+    instagram: { type: String, default: '' }
   }
 }, {
   timestamps: true

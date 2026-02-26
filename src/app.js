@@ -16,6 +16,8 @@ const authRoutes = require("./routes/auth.routes");
 const healthRoutes = require("./routes/health.routes");
 const categoryRoutes = require("./routes/category.routes"); // ← ADD THIS
 const productRoutes = require("./routes/product.routes");
+const userRoutes = require('./routes/user.routes');
+
 
 // Initialize Express application
 const app = express();
@@ -191,6 +193,7 @@ app.use("/api/auth", authRoutes);
 // Product routes
 app.use("/api/products", productRoutes);
 app.use("/api/categories", categoryRoutes); // This line MUST be here
+app.use('/api/users', userRoutes);
 
 /**
  * ====================================
