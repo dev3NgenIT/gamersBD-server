@@ -39,6 +39,7 @@ const healthRoutes = require("./routes/health.routes");
 const categoryRoutes = require("./routes/category.routes");
 const productRoutes = require("./routes/product.routes");
 const userRoutes = require("./routes/user.routes");
+const brandRoutes = require("./routes/brand.routes");
 
 // Initialize Express application
 const app = express();
@@ -201,16 +202,12 @@ app.get("/", (req, res) => {
 
 // Health check endpoint
 app.use("/api/health", healthRoutes);
-
-// Authentication routes
 app.use("/api/auth", authRoutes);
-
-// Product routes
 app.use("/api/products", productRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/users", userRoutes);
-// Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/brands", brandRoutes);
 /**
  * ====================================
  * API Root - List all available API endpoints
