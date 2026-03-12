@@ -40,6 +40,11 @@ const categoryRoutes = require("./routes/category.routes");
 const productRoutes = require("./routes/product.routes");
 const userRoutes = require("./routes/user.routes");
 const brandRoutes = require("./routes/brand.routes");
+const cartRoutes = require("./routes/cart.routes");
+// Uncomment these when you create them
+// const orderRoutes = require("./routes/order.routes");
+// const reviewRoutes = require("./routes/review.routes");
+// const wishlistRoutes = require("./routes/wishlist.routes");
 
 // Initialize Express application
 const app = express();
@@ -142,9 +147,9 @@ app.get("/", (req, res) => {
 
   res.status(200).json({
     success: true,
-    name: "Express API Server",
+    name: "GamersBD API Server",
     version: "1.0.0",
-    description: "RESTful API for authentication and product management",
+    description: "Complete e-commerce API for toys and games",
     status: "operational",
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
@@ -154,6 +159,11 @@ app.get("/", (req, res) => {
       health: `${baseUrl}/api/health`,
       auth: `${baseUrl}/api/auth`,
       products: `${baseUrl}/api/products`,
+      categories: `${baseUrl}/api/categories`,
+      brands: `${baseUrl}/api/brands`,
+      cart: `${baseUrl}/api/cart`,
+      users: `${baseUrl}/api/users`,
+      // orders: `${baseUrl}/api/orders`,
     },
     endpoints: {
       health: {
@@ -162,7 +172,7 @@ app.get("/", (req, res) => {
       auth: {
         post: {
           register: "/api/auth/register - Create new user account",
-          login: "/api/auth/login - Authenticate user",
+          login: "/api/auth/login - Authenticate user and get token",
           logout: "/api/auth/logout - Invalidate user session",
           "refresh-token": "/api/auth/refresh-token - Get new access token",
         },
@@ -172,24 +182,64 @@ app.get("/", (req, res) => {
       },
       products: {
         get: {
-          "/api/products": "List all products (paginated)",
+          "/api/products": "List all products (paginated with filters)",
           "/api/products/:id": "Get single product by ID",
+          "/api/products/slug/:slug": "Get product by slug",
+          "/api/products/featured": "Get featured products",
+          "/api/products/deals": "Get products on sale/deals",
         },
-        post: "/api/products - Create new product",
-        put: "/api/products/:id - Update product",
-        delete: "/api/products/:id - Delete product",
+        post: "/api/products - Create new product (admin)",
+        put: "/api/products/:id - Update product (admin)",
+        delete: "/api/products/:id - Delete product (admin)",
       },
       categories: {
-        get: "/api/categories - Get all categories",
+        get: {
+          "/api/categories": "Get all categories",
+          "/api/categories/:id": "Get single category",
+          "/api/categories/:id/products": "Get products by category",
+        },
         post: "/api/categories - Create new category (admin)",
+        put: "/api/categories/:id - Update category (admin)",
+        delete: "/api/categories/:id - Delete category (admin)",
+      },
+      brands: {
+        get: {
+          "/api/brands": "Get all brands",
+          "/api/brands/:id": "Get single brand",
+          "/api/brands/:id/products": "Get products by brand",
+        },
+        post: "/api/brands - Create new brand (admin)",
+        put: "/api/brands/:id - Update brand (admin)",
+        delete: "/api/brands/:id - Delete brand (admin)",
+      },
+      cart: {
+        get: {
+          "/api/cart": "Get current user's cart",
+          "/api/cart/count": "Get total items count in cart",
+          "/api/cart/validate": "Validate cart before checkout",
+        },
+        post: "/api/cart/add - Add item to cart",
+        put: "/api/cart/update/:itemId - Update cart item quantity",
+        delete: {
+          "/api/cart/remove/:itemId": "Remove specific item from cart",
+          "/api/cart/clear": "Clear entire cart",
+        },
+      },
+      users: {
+        get: {
+          "/api/users/profile": "Get user profile",
+          "/api/users/addresses": "Get user addresses",
+        },
+        put: "/api/users/profile - Update user profile",
+        post: "/api/users/addresses - Add new address",
+        delete: "/api/users/addresses/:id - Delete address",
       },
     },
     links: {
       self: baseUrl,
       api: `${baseUrl}/api`,
       health: `${baseUrl}/api/health`,
-      github: "https://github.com/yourusername/your-repo",
-      documentation: "https://your-docs-site.com",
+      github: "https://github.com/yourusername/gamersbd-server",
     },
   });
 });
@@ -202,12 +252,34 @@ app.get("/", (req, res) => {
 
 // Health check endpoint
 app.use("/api/health", healthRoutes);
+
+// Auth routes
 app.use("/api/auth", authRoutes);
+
+// Product routes
 app.use("/api/products", productRoutes);
+
+// Category routes
 app.use("/api/categories", categoryRoutes);
+
+// User routes
 app.use("/api/users", userRoutes);
-app.use("/api/auth", authRoutes);
+
+// Brand routes
 app.use("/api/brands", brandRoutes);
+
+// Cart routes (NOW ACTIVE ✅)
+app.use("/api/cart", cartRoutes);
+
+// Order routes (Uncomment when ready)
+// app.use("/api/orders", orderRoutes);
+
+// Review routes (Uncomment when ready)
+// app.use("/api/reviews", reviewRoutes);
+
+// Wishlist routes (Uncomment when ready)
+// app.use("/api/wishlist", wishlistRoutes);
+
 /**
  * ====================================
  * API Root - List all available API endpoints
@@ -218,7 +290,7 @@ app.get("/api", (req, res) => {
 
   res.status(200).json({
     success: true,
-    message: "API is running",
+    message: "GamersBD API is running",
     version: "v1",
     baseUrl: baseUrl,
     endpoints: {
@@ -234,11 +306,7 @@ app.get("/api", (req, res) => {
           login: { url: "/login", method: "POST", auth: false },
           logout: { url: "/logout", method: "POST", auth: true },
           profile: { url: "/profile", method: "GET", auth: true },
-          "refresh-token": {
-            url: "/refresh-token",
-            method: "POST",
-            auth: true,
-          },
+          "refresh-token": { url: "/refresh-token", method: "POST", auth: true },
         },
       },
       products: {
@@ -246,9 +314,57 @@ app.get("/api", (req, res) => {
         endpoints: {
           list: { url: "/", method: "GET", auth: false, paginated: true },
           get: { url: "/:id", method: "GET", auth: false },
+          getBySlug: { url: "/slug/:slug", method: "GET", auth: false },
+          featured: { url: "/featured", method: "GET", auth: false },
+          deals: { url: "/deals", method: "GET", auth: false },
           create: { url: "/", method: "POST", auth: true, role: "admin" },
           update: { url: "/:id", method: "PUT", auth: true, role: "admin" },
           delete: { url: "/:id", method: "DELETE", auth: true, role: "admin" },
+        },
+      },
+      categories: {
+        base: `${baseUrl}/api/categories`,
+        endpoints: {
+          list: { url: "/", method: "GET", auth: false },
+          get: { url: "/:id", method: "GET", auth: false },
+          products: { url: "/:id/products", method: "GET", auth: false },
+          create: { url: "/", method: "POST", auth: true, role: "admin" },
+          update: { url: "/:id", method: "PUT", auth: true, role: "admin" },
+          delete: { url: "/:id", method: "DELETE", auth: true, role: "admin" },
+        },
+      },
+      brands: {
+        base: `${baseUrl}/api/brands`,
+        endpoints: {
+          list: { url: "/", method: "GET", auth: false },
+          get: { url: "/:id", method: "GET", auth: false },
+          products: { url: "/:id/products", method: "GET", auth: false },
+          create: { url: "/", method: "POST", auth: true, role: "admin" },
+          update: { url: "/:id", method: "PUT", auth: true, role: "admin" },
+          delete: { url: "/:id", method: "DELETE", auth: true, role: "admin" },
+        },
+      },
+      cart: {
+        base: `${baseUrl}/api/cart`,
+        endpoints: {
+          get: { url: "/", method: "GET", auth: true },
+          count: { url: "/count", method: "GET", auth: true },
+          validate: { url: "/validate", method: "GET", auth: true },
+          add: { url: "/add", method: "POST", auth: true },
+          update: { url: "/update/:itemId", method: "PUT", auth: true },
+          remove: { url: "/remove/:itemId", method: "DELETE", auth: true },
+          clear: { url: "/clear", method: "DELETE", auth: true },
+        },
+      },
+      users: {
+        base: `${baseUrl}/api/users`,
+        endpoints: {
+          profile: { url: "/profile", method: "GET", auth: true },
+          updateProfile: { url: "/profile", method: "PUT", auth: true },
+          addresses: { url: "/addresses", method: "GET", auth: true },
+          addAddress: { url: "/addresses", method: "POST", auth: true },
+          updateAddress: { url: "/addresses/:id", method: "PUT", auth: true },
+          deleteAddress: { url: "/addresses/:id", method: "DELETE", auth: true },
         },
       },
     },
@@ -272,6 +388,10 @@ app.use("*", (req, res) => {
       health: "/api/health",
       auth: "/api/auth",
       products: "/api/products",
+      categories: "/api/categories",
+      brands: "/api/brands",
+      cart: "/api/cart",
+      users: "/api/users",
     },
     documentation: "Please check the API documentation at / for more details",
   });
