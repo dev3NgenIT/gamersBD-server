@@ -25,6 +25,11 @@ router.get("/", getBrands);
 // Get single brand by ID or slug (catch-all for identifiers)
 router.get("/:identifier", getBrandByIdentifier);
 
+// ============= PUBLIC ROUTES (NO AUTH REQUIRED) =============
+
+// Create brand - NOW PUBLIC (no authentication)
+router.post("/", createBrand);  // Removed protect and authorize
+
 // ============= PROTECTED ROUTES (ADMIN ONLY) =============
 
 // Bulk operations
@@ -37,9 +42,6 @@ router.post(
   authorize("admin"),
   updateAllProductCounts,
 );
-
-// Create brand
-router.post("/", protect, authorize("admin"), createBrand);
 
 // Toggle status
 router.patch(

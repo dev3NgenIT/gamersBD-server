@@ -55,7 +55,8 @@ const createBrand = async (req, res) => {
       });
     }
 
-    // Add createdBy if user is logged in
+    // Remove createdBy if you don't want to track who created it
+    // Or make it optional
     if (req.user) {
       brandData.createdBy = req.user._id;
     }
