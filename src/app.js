@@ -45,6 +45,7 @@ const orderRoutes = require("./routes/order.routes");
 const wishlistRoutes = require("./routes/wishlist.routes");
 const compareRoutes = require("./routes/compare.routes");
 const emailRoutes = require("./routes/email.routes");
+const blogRoutes = require("./routes/blog.routes");
 
 // Initialize Express application
 const app = express();
@@ -335,6 +336,7 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/wishlist", wishlistRoutes);
 
 app.use("/api/email", emailRoutes);
+app.use("/api/blogs", blogRoutes);
 
 // Compare routes
 app.use("/api/compare", compareRoutes);
