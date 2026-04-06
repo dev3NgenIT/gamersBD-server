@@ -48,6 +48,7 @@ const emailRoutes = require("./routes/email.routes");
 const blogRoutes = require("./routes/blog.routes");
 const contactRoutes = require("./routes/contact.routes");
 const faqRoutes = require("./routes/faq.routes");
+const siteSettingRoutes = require("./routes/siteSetting.routes");
 
 // Initialize Express application
 const app = express();
@@ -341,6 +342,7 @@ app.use("/api/email", emailRoutes);
 app.use("/api/blogs", blogRoutes);
 app.use('/api/contacts', contactRoutes);
 app.use("/api/faqs", faqRoutes);
+app.use("/api/settings", siteSettingRoutes);
 
 // Compare routes
 app.use("/api/compare", compareRoutes);
