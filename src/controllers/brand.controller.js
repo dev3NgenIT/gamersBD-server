@@ -282,8 +282,10 @@ const updateBrand = async (req, res) => {
       });
     }
 
-    // Add updatedBy
-    updates.updatedBy = req.user._id;
+    // Remove updatedBy if no user (optional)
+    if (req.user) {
+      updates.updatedBy = req.user._id;
+    }
 
     const brand = await Brand.findByIdAndUpdate(req.params.id, updates, {
       new: true,
@@ -374,7 +376,12 @@ const toggleBrandStatus = async (req, res) => {
     }
 
     brand.isActive = !brand.isActive;
-    brand.updatedBy = req.user._id;
+    
+    // Remove updatedBy if no user (optional)
+    if (req.user) {
+      brand.updatedBy = req.user._id;
+    }
+    
     await brand.save();
 
     res.status(200).json({
@@ -406,7 +413,12 @@ const togglePopularStatus = async (req, res) => {
     }
 
     brand.isPopular = !brand.isPopular;
-    brand.updatedBy = req.user._id;
+    
+    // Remove updatedBy if no user (optional)
+    if (req.user) {
+      brand.updatedBy = req.user._id;
+    }
+    
     await brand.save();
 
     res.status(200).json({

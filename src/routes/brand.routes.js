@@ -27,10 +27,22 @@ router.get("/:identifier", getBrandByIdentifier);
 
 // ============= PUBLIC ROUTES (NO AUTH REQUIRED) =============
 
-// Create brand - NOW PUBLIC (no authentication)
-router.post("/", createBrand);  // Removed protect and authorize
+// Create brand - PUBLIC
+router.post("/", createBrand);
 
-// ============= PROTECTED ROUTES (ADMIN ONLY) =============
+// Update brand - PUBLIC (removed authentication)
+router.put("/:id", updateBrand);
+
+// Delete brand - PUBLIC (removed authentication)
+router.delete("/:id", deleteBrand);
+
+// Toggle status - PUBLIC (removed authentication)
+router.patch("/:id/toggle-status", toggleBrandStatus);
+
+// Toggle popular - PUBLIC (removed authentication)
+router.patch("/:id/toggle-popular", togglePopularStatus);
+
+// ============= PROTECTED ROUTES (ADMIN ONLY) - Keep these if needed =============
 
 // Bulk operations
 router.patch("/bulk", protect, authorize("admin"), bulkUpdateBrands);
@@ -42,25 +54,5 @@ router.post(
   authorize("admin"),
   updateAllProductCounts,
 );
-
-// Toggle status
-router.patch(
-  "/:id/toggle-status",
-  protect,
-  authorize("admin"),
-  toggleBrandStatus,
-);
-router.patch(
-  "/:id/toggle-popular",
-  protect,
-  authorize("admin"),
-  togglePopularStatus,
-);
-
-// Update brand
-router.put("/:id", protect, authorize("admin"), updateBrand);
-
-// Delete brand
-router.delete("/:id", protect, authorize("admin"), deleteBrand);
 
 module.exports = router;
