@@ -46,6 +46,7 @@ const wishlistRoutes = require("./routes/wishlist.routes");
 const compareRoutes = require("./routes/compare.routes");
 const emailRoutes = require("./routes/email.routes");
 const blogRoutes = require("./routes/blog.routes");
+const contactRoutes = require("./routes/contact.routes");
 
 // Initialize Express application
 const app = express();
@@ -337,6 +338,7 @@ app.use("/api/wishlist", wishlistRoutes);
 
 app.use("/api/email", emailRoutes);
 app.use("/api/blogs", blogRoutes);
+app.use('/api/contacts', contactRoutes);
 
 // Compare routes
 app.use("/api/compare", compareRoutes);

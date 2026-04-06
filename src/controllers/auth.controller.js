@@ -3,15 +3,16 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const mongoose = require('mongoose');
 
-// Generate JWT Token
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
+// Generate JWT Token with role included
+const generateToken = (id, role) => {
+  return jwt.sign({ id, role }, process.env.JWT_SECRET, {
     expiresIn: '30d'
   });
 };
 
 // @desc    Register user
 // @route   POST /api/auth/register
+// @access  Public
 const register = async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
@@ -30,12 +31,18 @@ const register = async (req, res) => {
     const firstName = nameParts[0] || '';
     const lastName = nameParts.slice(1).join(' ') || '';
     
+    // Determine user role (only allow admin if explicitly set and has secret key)
+    let userRole = 'user';
+    if (role === 'admin' && req.body.adminSecret === process.env.ADMIN_SECRET) {
+      userRole = 'admin';
+    }
+    
     // Create user with all fields
     const user = await User.create({
       name,
       email,
       password,
-      role: role === 'admin' ? 'admin' : 'user',
+      role: userRole,
       firstName,
       lastName,
       phone: '',
@@ -56,8 +63,8 @@ const register = async (req, res) => {
       }
     });
     
-    // Generate token
-    const token = generateToken(user._id);
+    // Generate token with role
+    const token = generateToken(user._id, user.role);
     
     res.status(201).json({
       success: true,
@@ -87,6 +94,7 @@ const register = async (req, res) => {
 
 // @desc    Login user
 // @route   POST /api/auth/login
+// @access  Public
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -111,8 +119,8 @@ const login = async (req, res) => {
       });
     }
     
-    // Generate token
-    const token = generateToken(user._id);
+    // Generate token with role
+    const token = generateToken(user._id, user.role);
     
     res.status(200).json({
       success: true,
@@ -142,6 +150,7 @@ const login = async (req, res) => {
 
 // @desc    Get user profile
 // @route   GET /api/auth/profile
+// @access  Private
 const getProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select('-password');
@@ -158,7 +167,8 @@ const getProfile = async (req, res) => {
 };
 
 // @desc    Update user profile
-// @route   PUT /api/users/profile
+// @route   PUT /api/auth/profile
+// @access  Private
 const updateProfile = async (req, res) => {
   try {
     const {
@@ -195,7 +205,7 @@ const updateProfile = async (req, res) => {
     }
     if (phone !== undefined) user.phone = phone;
     if (bio !== undefined) user.bio = bio;
-    if (avatar !== undefined) user.avatar = avatar; // Base64 string
+    if (avatar !== undefined) user.avatar = avatar;
     
     // Update address if provided
     if (address) {
@@ -227,7 +237,6 @@ const updateProfile = async (req, res) => {
     });
   }
 };
-
 
 // @desc    Update user (admin only)
 // @route   PUT /api/users/:id
@@ -360,12 +369,12 @@ const getUsers = async (req, res) => {
       const parts = req.query.sortBy.split(':');
       sort[parts[0]] = parts[1] === 'desc' ? -1 : 1;
     } else {
-      sort.createdAt = -1; // Default sort by newest
+      sort.createdAt = -1;
     }
     
     // Execute query with pagination
     const users = await User.find(query)
-      .select('-password') // Exclude password
+      .select('-password')
       .sort(sort)
       .skip(skip)
       .limit(limit);
@@ -392,7 +401,6 @@ const getUsers = async (req, res) => {
 // @desc    Get user by ID
 // @route   GET /api/users/:id
 // @access  Private/Admin
-// @desc    Get user by ID - Add error handling for invalid ObjectId
 const getUserById = async (req, res) => {
   try {
     // Check if ID is valid MongoDB ObjectId
@@ -427,7 +435,6 @@ const getUserById = async (req, res) => {
 // @desc    Delete user
 // @route   DELETE /api/users/:id
 // @access  Private/Admin
-// @desc    Delete user - Fix for 'user.remove()' is deprecated
 const deleteUser = async (req, res) => {
   try {
     // Check if ID is valid MongoDB ObjectId
@@ -455,7 +462,6 @@ const deleteUser = async (req, res) => {
       });
     }
     
-    // Use deleteOne() instead of remove() (remove is deprecated)
     await user.deleteOne();
     
     res.status(200).json({
@@ -470,7 +476,6 @@ const deleteUser = async (req, res) => {
   }
 };
 
-// Update exports at the bottom
 module.exports = {
   register,
   login,
@@ -478,6 +483,6 @@ module.exports = {
   updateProfile,
   getUsers,
   getUserById,
-  updateUser,  // Add this
+  updateUser,
   deleteUser
 };
