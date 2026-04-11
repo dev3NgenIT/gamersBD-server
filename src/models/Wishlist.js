@@ -1,4 +1,4 @@
-// models/Wishlist.js
+// models/Wishlist.js - COMPLETELY FIXED VERSION
 const mongoose = require('mongoose');
 
 const wishlistItemSchema = new mongoose.Schema({
@@ -11,7 +11,10 @@ const wishlistItemSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
-  note: String
+  note: {
+    type: String,
+    default: ''
+  }
 });
 
 const wishlistSchema = new mongoose.Schema({
@@ -21,7 +24,10 @@ const wishlistSchema = new mongoose.Schema({
     required: true,
     unique: true
   },
-  items: [wishlistItemSchema],
+  items: {
+    type: [wishlistItemSchema],
+    default: []
+  },
   name: {
     type: String,
     default: 'My Wishlist'
@@ -39,27 +45,28 @@ const wishlistSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Add virtual for totalItems
+// ✅ FIXED: No pre-save middleware - handle shareId generation differently
+// Remove any pre('save') middleware completely
+
+// Virtual for totalItems
 wishlistSchema.virtual('totalItems').get(function() {
-  return this.items.length;
+  return this.items ? this.items.length : 0;
 });
 
-// ✅ FIXED: Proper pre-save middleware with next parameter
-wishlistSchema.pre('save', function(next) {
-  try {
-    // Generate share ID for public wishlist
-    if (this.isPublic && !this.shareId) {
-      this.shareId = Math.random().toString(36).substring(2, 15) + 
-                     Math.random().toString(36).substring(2, 15);
-    }
-    next();
-  } catch (error) {
-    next(error);
-  }
-});
+// Method to generate share ID (call when making public)
+wishlistSchema.methods.generateShareId = function() {
+  this.shareId = Math.random().toString(36).substring(2, 15) + 
+                 Math.random().toString(36).substring(2, 15);
+  return this.shareId;
+};
 
-// Ensure virtuals are included in JSON output
+// Ensure virtuals are included
 wishlistSchema.set('toJSON', { virtuals: true });
 wishlistSchema.set('toObject', { virtuals: true });
+
+// Remove any existing model and create new one
+if (mongoose.models.Wishlist) {
+  delete mongoose.models.Wishlist;
+}
 
 module.exports = mongoose.model('Wishlist', wishlistSchema);

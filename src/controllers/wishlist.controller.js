@@ -462,8 +462,8 @@ module.exports = {
   addToWishlist,
   removeFromWishlist,
   clearWishlist,
-  moveToCart,
+  checkWishlist,
   updateWishlistSettings,
   getSharedWishlist,
-  checkWishlist
+  moveToCart,
 };
