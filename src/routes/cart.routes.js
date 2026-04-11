@@ -1,5 +1,6 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
+const { protect } = require('../middleware/auth.middleware');
 const {
   getCart,
   addToCart,
@@ -10,26 +11,21 @@ const {
   validateCart,
   testCart,
   syncGuestCart,
-} = require("../controllers/cart.controller");
-const { protect } = require("../middleware/auth.middleware");
+} = require('../controllers/cart.controller');
 
-console.log("🛒 Initializing cart routes...");
+// Public test route
+router.get('/test', testCart);
 
-// Public test route (no auth required)
-router.get("/test", testCart);
-
-// Protected routes (auth required for all below)
+// Protected routes (require authentication)
 router.use(protect);
 
-router.get("/", getCart);
-router.get("/count", getCartCount);
-router.get("/validate", validateCart);
-router.post("/add", addToCart);
-router.post("/sync", syncGuestCart);  // Add this line
-router.put("/update/:itemId", updateCartItem);
-router.delete("/remove/:itemId", removeFromCart);
-router.delete("/clear", clearCart);
-
-console.log("✅ Cart routes registered successfully");
+router.get('/', getCart);
+router.get('/count', getCartCount);
+router.get('/validate', validateCart);
+router.post('/add', addToCart);
+router.post('/sync', syncGuestCart);
+router.put('/update/:itemId', updateCartItem);
+router.delete('/remove/:itemId', removeFromCart);
+router.delete('/clear', clearCart);
 
 module.exports = router;
