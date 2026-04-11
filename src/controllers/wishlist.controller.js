@@ -390,7 +390,14 @@ const updateWishlistSettings = async (req, res) => {
     }
 
     if (name) wishlist.name = name;
-    if (isPublic !== undefined) wishlist.isPublic = isPublic;
+    
+    if (isPublic !== undefined) {
+      wishlist.isPublic = isPublic;
+      // Generate share ID if making public and no shareId exists
+      if (isPublic && !wishlist.shareId) {
+        wishlist.generateShareId();
+      }
+    }
 
     await wishlist.save();
 

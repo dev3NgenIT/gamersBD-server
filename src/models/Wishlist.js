@@ -44,13 +44,18 @@ wishlistSchema.virtual('totalItems').get(function() {
   return this.items.length;
 });
 
-// Generate share ID for public wishlist
-wishlistSchema.pre('save', async function(next) {
-  if (this.isPublic && !this.shareId) {
-    this.shareId = Math.random().toString(36).substring(2, 15) + 
-                   Math.random().toString(36).substring(2, 15);
+// ✅ FIXED: Proper pre-save middleware with next parameter
+wishlistSchema.pre('save', function(next) {
+  try {
+    // Generate share ID for public wishlist
+    if (this.isPublic && !this.shareId) {
+      this.shareId = Math.random().toString(36).substring(2, 15) + 
+                     Math.random().toString(36).substring(2, 15);
+    }
+    next();
+  } catch (error) {
+    next(error);
   }
-  next();
 });
 
 // Ensure virtuals are included in JSON output
