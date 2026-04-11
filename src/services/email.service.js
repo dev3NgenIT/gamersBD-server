@@ -10,7 +10,7 @@ class EmailService {
     console.log('📧 Email Service Initializing...');
     console.log('=================================');
     console.log('EMAIL_USER:', process.env.EMAIL_USER ? '✅ Set' : '❌ MISSING');
-    console.log('EMAIL_PASS:', process.env.EMAIL_PASS ? '✅ Set (length: ' + process.env.EMAIL_PASS.length + ')' : '❌ MISSING');
+    console.log('EMAIL_PASS:', process.env.EMAIL_PASS ? '✅ Set (length: ' + (process.env.EMAIL_PASS ? process.env.EMAIL_PASS.replace(/\s/g, '').length : 0) + ')' : '❌ MISSING');
     console.log('EMAIL_HOST:', process.env.EMAIL_HOST || 'smtp.gmail.com (default)');
     console.log('EMAIL_PORT:', process.env.EMAIL_PORT || '587 (default)');
     console.log('EMAIL_FROM:', process.env.EMAIL_FROM || 'Not set');
@@ -19,16 +19,20 @@ class EmailService {
     // Validate credentials before creating transporter
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
       console.error('❌ CRITICAL: Email credentials are missing in .env file!');
+      console.error('   Make sure EMAIL_USER and EMAIL_PASS are set correctly');
     }
+
+    // Remove spaces from app password if present
+    const emailPass = process.env.EMAIL_PASS ? process.env.EMAIL_PASS.replace(/\s/g, '') : '';
 
     // Create transporter with explicit auth
     this.transporter = nodemailer.createTransport({
       host: process.env.EMAIL_HOST || 'smtp.gmail.com',
       port: parseInt(process.env.EMAIL_PORT) || 587,
-      secure: false, // true for 465, false for other ports
+      secure: process.env.EMAIL_SECURE === 'true' || false, // true for 465, false for other ports
       auth: {
         user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
+        pass: emailPass // Use password without spaces
       },
       tls: {
         rejectUnauthorized: false // Only for development
@@ -51,6 +55,7 @@ class EmailService {
     try {
       await this.transporter.verify();
       console.log('✅ Email server connection verified successfully');
+      console.log('   Ready to send emails!');
     } catch (error) {
       console.error('❌ Email server connection failed:');
       console.error('   Error:', error.message);
@@ -58,9 +63,18 @@ class EmailService {
       if (error.message.includes('Missing credentials for "PLAIN"')) {
         console.error('   🔧 FIX: EMAIL_USER or EMAIL_PASS is empty or incorrect in .env file');
         console.error('   🔧 Make sure EMAIL_PASS is the 16-digit app password with NO SPACES');
-      } else if (error.message.includes('Invalid login')) {
+        console.error('   🔧 Current EMAIL_PASS (without spaces):', process.env.EMAIL_PASS ? process.env.EMAIL_PASS.replace(/\s/g, '') : 'NOT SET');
+      } else if (error.message.includes('Invalid login') || error.message.includes('535')) {
         console.error('   🔧 FIX: Wrong password. Generate a new App Password at:');
         console.error('   🔧 https://myaccount.google.com/apppasswords');
+        console.error('   🔧 Steps:');
+        console.error('       1. Go to Google Account Settings');
+        console.error('       2. Enable 2-Factor Authentication');
+        console.error('       3. Generate App Password for "Mail"');
+        console.error('       4. Copy the 16-character password WITHOUT spaces');
+      } else if (error.message.includes('EAUTH')) {
+        console.error('   🔧 FIX: Authentication error. Check your credentials');
+        console.error('   🔧 Make sure "Less secure app access" is OFF and use App Password instead');
       }
     }
   }
@@ -128,12 +142,12 @@ class EmailService {
                 <p><strong>Payment Status:</strong> ${data.paymentStatus}</p>
                 
                 <h4>Items Ordered:</h4>
-                ${data.items.map(item => `
+                ${data.items ? data.items.map(item => `
                   <div class="item">
                     <p><strong>${item.name}</strong> x ${item.quantity}</p>
                     <p>Price: ৳${item.price} | Total: ৳${item.total}</p>
                   </div>
-                `).join('')}
+                `).join('') : '<p>No items found</p>'}
                 
                 <div class="total">
                   <p>Subtotal: ৳${data.subtotal}</p>
@@ -145,12 +159,14 @@ class EmailService {
               
               <h4>Shipping Address:</h4>
               <p>
-                ${data.shippingAddress.fullName}<br>
-                ${data.shippingAddress.addressLine1}<br>
-                ${data.shippingAddress.addressLine2 ? data.shippingAddress.addressLine2 + '<br>' : ''}
-                ${data.shippingAddress.city}, ${data.shippingAddress.state} - ${data.shippingAddress.postalCode}<br>
-                ${data.shippingAddress.country}<br>
-                Phone: ${data.shippingAddress.phone}
+                ${data.shippingAddress ? `
+                  ${data.shippingAddress.fullName}<br>
+                  ${data.shippingAddress.addressLine1}<br>
+                  ${data.shippingAddress.addressLine2 ? data.shippingAddress.addressLine2 + '<br>' : ''}
+                  ${data.shippingAddress.city}, ${data.shippingAddress.state} - ${data.shippingAddress.postalCode}<br>
+                  ${data.shippingAddress.country}<br>
+                  Phone: ${data.shippingAddress.phone}
+                ` : 'No shipping address provided'}
               </p>
               
               <p><strong>Note:</strong> Your order is pending confirmation. Our admin will review and confirm your order within 24 hours. You will receive another email once your order is confirmed.</p>
@@ -176,7 +192,7 @@ class EmailService {
             body { font-family: Arial, sans-serif; line-height: 1.6; padding: 20px; }
             .container { max-width: 600px; margin: 0 auto; background: #f9f9f9; padding: 20px; border-radius: 10px; }
             .header { color: #333; border-bottom: 2px solid #667eea; padding-bottom: 10px; }
-            .status { font-size: 24px; padding: 15px; border-radius: 5px; text-align: center; }
+            .status { font-size: 24px; padding: 15px; border-radius: 5px; text-align: center; margin: 20px 0; }
             .status-pending { background: #fff3cd; color: #856404; }
             .status-confirmed { background: #d4edda; color: #155724; }
             .status-processing { background: #cce5ff; color: #004085; }
@@ -184,6 +200,7 @@ class EmailService {
             .status-out_for_delivery { background: #ffe0b2; color: #e65100; }
             .status-delivered { background: #c8e6c9; color: #1b5e20; }
             .status-cancelled { background: #ffcdd2; color: #b71c1c; }
+            .button { display: inline-block; padding: 10px 20px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; }
           </style>
         </head>
         <body>
@@ -199,9 +216,38 @@ class EmailService {
             ${data.trackingNumber ? `<p><strong>Tracking Number:</strong> ${data.trackingNumber}</p>` : ''}
             ${data.carrier ? `<p><strong>Carrier:</strong> ${data.carrier}</p>` : ''}
             ${data.message ? `<p><strong>Message:</strong> ${data.message}</p>` : ''}
-            <p style="margin-top: 30px;">
-              <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/orders/${data.orderId}/tracking" style="background: #667eea; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Track Your Order</a>
+            <p style="margin-top: 30px; text-align: center;">
+              <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/orders/${data.orderId}/tracking" class="button">Track Your Order</a>
             </p>
+          </div>
+        </body>
+        </html>
+      `,
+      'welcome': `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Welcome to GamersBD</title>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; text-align: center; }
+            .button { display: inline-block; padding: 10px 20px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>🎮 Welcome to GamersBD!</h1>
+            </div>
+            <div style="padding: 20px;">
+              <h2>Hello ${data.userName || 'Gamer'}!</h2>
+              <p>Thank you for registering with GamersBD - your ultimate gaming destination!</p>
+              <p>Start exploring our collection of games, toys, and accessories.</p>
+              <p style="text-align: center;">
+                <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}" class="button">Start Shopping →</a>
+              </p>
+            </div>
           </div>
         </body>
         </html>
@@ -209,22 +255,6 @@ class EmailService {
     };
     
     return templates[templateName] || '<p>Email notification</p>';
-  }
-
-  getStatusColor(status) {
-    const colors = {
-      'pending': '#f39c12',
-      'confirmed': '#27ae60',
-      'processing': '#3498db',
-      'shipped': '#9b59b6',
-      'in_transit': '#e67e22',
-      'out_for_delivery': '#e67e22',
-      'delivered': '#2ecc71',
-      'cancelled': '#e74c3c',
-      'refunded': '#95a5a6',
-      'on_hold': '#f1c40f'
-    };
-    return colors[status] || '#333';
   }
 
   getStatusText(status) {
@@ -261,12 +291,14 @@ class EmailService {
       };
 
       console.log(`📧 Sending email to: ${to}`);
+      console.log(`   Subject: ${subject}`);
       const info = await this.transporter.sendMail(mailOptions);
       console.log('✅ Email sent successfully!');
       console.log('   Message ID:', info.messageId);
       return { success: true, messageId: info.messageId };
     } catch (error) {
       console.error('❌ Email send error:', error);
+      console.error('   Error details:', error.message);
       return { success: false, error: error.message };
     }
   }
@@ -283,8 +315,8 @@ class EmailService {
         orderDate: new Date(order.createdAt).toLocaleString('en-BD', {
           timeZone: 'Asia/Dhaka'
         }),
-        paymentMethod: order.payment.method,
-        paymentStatus: order.payment.status,
+        paymentMethod: order.payment?.method || 'Not specified',
+        paymentStatus: order.payment?.status || 'Pending',
         items: order.items.map(item => ({
           name: item.product?.name || 'Product',
           quantity: item.quantity,
@@ -358,35 +390,11 @@ class EmailService {
    */
   async sendWelcomeEmail(user) {
     try {
-      const html = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>Welcome to GamersBD</title>
-          <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; text-align: center; }
-            .button { display: inline-block; padding: 10px 20px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1>🎮 Welcome to GamersBD!</h1>
-            </div>
-            <div style="padding: 20px;">
-              <h2>Hello ${user.name || 'Gamer'}!</h2>
-              <p>Thank you for registering with GamersBD - your ultimate gaming destination!</p>
-              <p>Start exploring our collection of games, toys, and accessories.</p>
-              <p style="text-align: center;">
-                <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}" class="button">Start Shopping →</a>
-              </p>
-            </div>
-          </div>
-        </body>
-        </html>
-      `;
+      const templateData = {
+        userName: user.name || 'Gamer'
+      };
+
+      const html = await this.loadTemplate('welcome', templateData);
 
       return await this.sendEmail(
         user.email,
@@ -395,6 +403,42 @@ class EmailService {
       );
     } catch (error) {
       console.error('Welcome email error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Test email configuration
+   */
+  async testEmailConfiguration() {
+    console.log('🧪 Testing email configuration...');
+    
+    try {
+      // Verify connection
+      await this.verifyConnection();
+      
+      // Send test email
+      const testResult = await this.sendEmail(
+        process.env.EMAIL_USER, // Send to yourself
+        '✅ Email Configuration Test',
+        `
+        <h1>Test Email</h1>
+        <p>Your email configuration is working correctly!</p>
+        <p>Time: ${new Date().toLocaleString()}</p>
+        <p>From: ${process.env.EMAIL_FROM || process.env.EMAIL_USER}</p>
+        `
+      );
+      
+      if (testResult.success) {
+        console.log('✅ Test email sent successfully!');
+        console.log(`   Check your inbox at ${process.env.EMAIL_USER}`);
+      } else {
+        console.error('❌ Test email failed:', testResult.error);
+      }
+      
+      return testResult;
+    } catch (error) {
+      console.error('❌ Test failed:', error);
       return { success: false, error: error.message };
     }
   }

@@ -10,20 +10,22 @@
   "dependencies": {
     "bcrypt": "^5.1.0",
     "bcryptjs": "^2.4.3",
+    "check-disk-space": "^3.4.0",
     "compression": "^1.8.1",
     "cors": "^2.8.5",
-    "dotenv": "^16.4.1",
+    "dotenv": "^16.6.1",
     "express": "^4.19.2",
     "express-rate-limit": "^8.2.1",
     "express-validator": "^7.3.1",
     "handlebars": "^4.7.8",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
-    "mongoose": "^8.1.1",
+    "mongodb": "3.6",
+    "mongoose": "^9.4.1",
     "morgan": "^1.10.1",
     "nodemailer": "^8.0.2"
   },
   "devDependencies": {
-    "nodemon": "^3.0.3"
+    "nodemon": "^3.1.14"
   }
 }

@@ -2,7 +2,6 @@ const dotenv = require("dotenv");
 const path = require("path");
 
 // Load env vars from .env file
-const result = dotenv.config();
 dotenv.config();
 
 // Debug - remove this after confirming it works
@@ -11,20 +10,14 @@ console.log("✅ JWT_SECRET exists:", !!process.env.JWT_SECRET);
 console.log("✅ MONGO_URI exists:", !!process.env.MONGO_URI);
 console.log("✅ PORT:", process.env.PORT);
 
-if (result.error) {
-  console.error("⚠️  Error loading .env file:", result.error.message);
-  console.log("Make sure you have a .env file in the root directory");
-} else {
-  console.log("✅ Environment variables loaded successfully");
-}
-
-// Debug: Check if JWT_SECRET is loaded (without exposing the value)
+// Debug: Check if JWT_SECRET is loaded
 console.log(
   "🔑 JWT_SECRET status:",
-  process.env.JWT_SECRET ? "✅ Present" : "❌ MISSING",
+  process.env.JWT_SECRET ? "✅ Present" : "❌ MISSING"
 );
 console.log("🌍 NODE_ENV:", process.env.NODE_ENV || "development");
 console.log("🚪 PORT:", process.env.PORT || "5000 (default)");
+console.log("=================================");
 
 const express = require("express");
 const cors = require("cors");
@@ -33,7 +26,7 @@ const morgan = require("morgan");
 const compression = require("compression");
 const rateLimit = require("express-rate-limit");
 
-// Route imports
+// Route imports - Fixed paths (remove ../ since app.js is in src folder)
 const authRoutes = require("./routes/auth.routes");
 const healthRoutes = require("./routes/health.routes");
 const categoryRoutes = require("./routes/category.routes");
@@ -49,6 +42,7 @@ const blogRoutes = require("./routes/blog.routes");
 const contactRoutes = require("./routes/contact.routes");
 const faqRoutes = require("./routes/faq.routes");
 const siteSettingRoutes = require("./routes/siteSetting.routes");
+const indexRoutes = require('./routes/index');
 
 // Initialize Express application
 const app = express();
@@ -70,7 +64,7 @@ app.use(
         imgSrc: ["'self'", "data:", "https:"],
       },
     },
-  }),
+  })
 );
 
 // CORS configuration
@@ -147,170 +141,14 @@ app.use("/api", limiter);
  * Root Endpoint - API Information
  * ====================================
  */
-app.get("/", (req, res) => {
-  const baseUrl = `${req.protocol}://${req.get("host")}`;
 
-  res.status(200).json({
-    success: true,
-    name: "GamersBD API Server",
-    version: "1.0.0",
-    description: "Complete e-commerce API for toys and games",
-    status: "operational",
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    environment: process.env.NODE_ENV || "development",
-    documentation: {
-      api: `${baseUrl}/api`,
-      health: `${baseUrl}/api/health`,
-      auth: `${baseUrl}/api/auth`,
-      products: `${baseUrl}/api/products`,
-      categories: `${baseUrl}/api/categories`,
-      brands: `${baseUrl}/api/brands`,
-      cart: `${baseUrl}/api/cart`,
-      orders: `${baseUrl}/api/orders`,
-      wishlist: `${baseUrl}/api/wishlist`,
-      compare: `${baseUrl}/api/compare`,
-      users: `${baseUrl}/api/users`,
-    },
-    endpoints: {
-      health: {
-        get: "/api/health - System health check with uptime and status",
-      },
-      auth: {
-        post: {
-          register: "/api/auth/register - Create new user account",
-          login: "/api/auth/login - Authenticate user and get token",
-          logout: "/api/auth/logout - Invalidate user session",
-          "refresh-token": "/api/auth/refresh-token - Get new access token",
-        },
-        get: {
-          profile: "/api/auth/profile - Get current user profile",
-        },
-      },
-      products: {
-        get: {
-          "/api/products": "List all products (paginated with filters)",
-          "/api/products/:id": "Get single product by ID",
-          "/api/products/slug/:slug": "Get product by slug",
-          "/api/products/featured": "Get featured products",
-          "/api/products/deals": "Get products on sale/deals",
-        },
-        post: "/api/products - Create new product (admin)",
-        put: "/api/products/:id - Update product (admin)",
-        delete: "/api/products/:id - Delete product (admin)",
-      },
-      categories: {
-        get: {
-          "/api/categories": "Get all categories",
-          "/api/categories/:id": "Get single category",
-          "/api/categories/:id/products": "Get products by category",
-        },
-        post: "/api/categories - Create new category (admin)",
-        put: "/api/categories/:id - Update category (admin)",
-        delete: "/api/categories/:id - Delete category (admin)",
-      },
-      brands: {
-        get: {
-          "/api/brands": "Get all brands",
-          "/api/brands/:id": "Get single brand",
-          "/api/brands/:id/products": "Get products by brand",
-        },
-        post: "/api/brands - Create new brand (admin)",
-        put: "/api/brands/:id - Update brand (admin)",
-        delete: "/api/brands/:id - Delete brand (admin)",
-      },
-      cart: {
-        get: {
-          "/api/cart": "Get current user's cart",
-          "/api/cart/count": "Get total items count in cart",
-          "/api/cart/validate": "Validate cart before checkout",
-        },
-        post: "/api/cart/add - Add item to cart",
-        put: "/api/cart/update/:itemId - Update cart item quantity",
-        delete: {
-          "/api/cart/remove/:itemId": "Remove specific item from cart",
-          "/api/cart/clear": "Clear entire cart",
-        },
-      },
-      orders: {
-        get: {
-          "/api/orders": "Get all orders (admin)",
-          "/api/orders/my-orders": "Get current user's orders",
-          "/api/orders/:id": "Get single order by ID",
-          "/api/orders/:id/payment": "Get payment details",
-          "/api/orders/:id/tracking": "Get order tracking history",
-          "/api/orders/stats/dashboard": "Get order statistics (admin)",
-        },
-        post: {
-          "/api/orders/checkout": "Create new order from cart",
-        },
-        put: {
-          "/api/orders/:id/status": "Update order status (admin/editor)",
-          "/api/orders/:id/payment": "Update payment status (admin/editor)",
-          "/api/orders/:id/tracking": "Add tracking information (admin/editor)",
-          "/api/orders/:id/cancel": "Cancel order (user)",
-          "/api/orders/bulk-status": "Bulk update order status (admin)",
-        },
-      },
-      wishlist: {
-        get: {
-          "/api/wishlist": "Get user's wishlist",
-          "/api/wishlist/check/:productId": "Check if product is in wishlist",
-          "/api/wishlist/shared/:shareId": "Get public shared wishlist",
-        },
-        post: {
-          "/api/wishlist/add/:productId": "Add product to wishlist",
-          "/api/wishlist/move-to-cart/:itemId": "Move wishlist item to cart",
-        },
-        put: {
-          "/api/wishlist/settings": "Update wishlist settings (name, privacy)",
-        },
-        delete: {
-          "/api/wishlist/remove/:itemId": "Remove item from wishlist",
-          "/api/wishlist/clear": "Clear entire wishlist",
-        },
-      },
-      compare: {
-        get: {
-          "/api/compare": "Get user's compare list",
-          "/api/compare/table": "Get comparison table with all specs",
-        },
-        post: {
-          "/api/compare/add/:productId": "Add product to compare",
-        },
-        delete: {
-          "/api/compare/remove/:itemId": "Remove product from compare",
-          "/api/compare/clear": "Clear compare list",
-        },
-        put: {
-          "/api/compare/settings": "Update compare settings (admin)",
-        },
-      },
-      users: {
-        get: {
-          "/api/users/profile": "Get user profile",
-          "/api/users/addresses": "Get user addresses",
-        },
-        put: "/api/users/profile - Update user profile",
-        post: "/api/users/addresses - Add new address",
-        delete: "/api/users/addresses/:id - Delete address",
-      },
-    },
-    links: {
-      self: baseUrl,
-      api: `${baseUrl}/api`,
-      health: `${baseUrl}/api/health`,
-      github: "https://github.com/yourusername/gamersbd-server",
-    },
-  });
-});
+app.use('/', indexRoutes);
 
 /**
  * ====================================
  * API Routes
  * ====================================
  */
-
 // Health check endpoint
 app.use("/api/health", healthRoutes);
 
@@ -330,7 +168,9 @@ app.use("/api/users", userRoutes);
 app.use("/api/brands", brandRoutes);
 
 // Cart routes
+console.log("🛒 Initializing cart routes...");
 app.use("/api/cart", cartRoutes);
+console.log("✅ Cart routes registered successfully");
 
 // Order routes
 app.use("/api/orders", orderRoutes);
@@ -338,10 +178,19 @@ app.use("/api/orders", orderRoutes);
 // Wishlist routes
 app.use("/api/wishlist", wishlistRoutes);
 
+// Email routes
 app.use("/api/email", emailRoutes);
+
+// Blog routes
 app.use("/api/blogs", blogRoutes);
-app.use('/api/contacts', contactRoutes);
+
+// Contact routes
+app.use("/api/contacts", contactRoutes);
+
+// FAQ routes
 app.use("/api/faqs", faqRoutes);
+
+// Site settings routes
 app.use("/api/settings", siteSettingRoutes);
 
 // Compare routes
@@ -358,13 +207,13 @@ app.get("/api", (req, res) => {
   res.status(200).json({
     success: true,
     message: "GamersBD API is running",
-    version: "v1",
+    version: "v2",
     baseUrl: baseUrl,
     endpoints: {
       health: {
         url: `${baseUrl}/api/health`,
         methods: ["GET"],
-        description: "System health check",
+        description: "System health check with detailed metrics",
       },
       auth: {
         base: `${baseUrl}/api/auth`,
@@ -426,23 +275,12 @@ app.get("/api", (req, res) => {
       orders: {
         base: `${baseUrl}/api/orders`,
         endpoints: {
-          // User endpoints
           myOrders: { url: "/my-orders", method: "GET", auth: true },
           get: { url: "/:id", method: "GET", auth: true },
-          payment: { url: "/:id/payment", method: "GET", auth: true },
-          tracking: { url: "/:id/tracking", method: "GET", auth: true },
           checkout: { url: "/checkout", method: "POST", auth: true },
           cancel: { url: "/:id/cancel", method: "PUT", auth: true },
-          
-          // Admin/Editor endpoints
           list: { url: "/", method: "GET", auth: true, role: "admin,editor" },
-          stats: { url: "/stats/dashboard", method: "GET", auth: true, role: "admin,editor" },
           updateStatus: { url: "/:id/status", method: "PUT", auth: true, role: "admin,editor" },
-          updatePayment: { url: "/:id/payment", method: "PUT", auth: true, role: "admin,editor" },
-          addTracking: { url: "/:id/tracking", method: "PUT", auth: true, role: "admin,editor" },
-          
-          // Admin only
-          bulkStatus: { url: "/bulk-status", method: "PUT", auth: true, role: "admin" },
         },
       },
       wishlist: {
@@ -450,10 +288,7 @@ app.get("/api", (req, res) => {
         endpoints: {
           get: { url: "/", method: "GET", auth: true },
           check: { url: "/check/:productId", method: "GET", auth: true },
-          shared: { url: "/shared/:shareId", method: "GET", auth: false },
           add: { url: "/add/:productId", method: "POST", auth: true },
-          moveToCart: { url: "/move-to-cart/:itemId", method: "POST", auth: true },
-          settings: { url: "/settings", method: "PUT", auth: true },
           remove: { url: "/remove/:itemId", method: "DELETE", auth: true },
           clear: { url: "/clear", method: "DELETE", auth: true },
         },
@@ -462,11 +297,9 @@ app.get("/api", (req, res) => {
         base: `${baseUrl}/api/compare`,
         endpoints: {
           get: { url: "/", method: "GET", auth: true },
-          table: { url: "/table", method: "GET", auth: true },
           add: { url: "/add/:productId", method: "POST", auth: true },
           remove: { url: "/remove/:itemId", method: "DELETE", auth: true },
           clear: { url: "/clear", method: "DELETE", auth: true },
-          settings: { url: "/settings", method: "PUT", auth: true, role: "admin" },
         },
       },
       users: {
@@ -476,7 +309,6 @@ app.get("/api", (req, res) => {
           updateProfile: { url: "/profile", method: "PUT", auth: true },
           addresses: { url: "/addresses", method: "GET", auth: true },
           addAddress: { url: "/addresses", method: "POST", auth: true },
-          updateAddress: { url: "/addresses/:id", method: "PUT", auth: true },
           deleteAddress: { url: "/addresses/:id", method: "DELETE", auth: true },
         },
       },
@@ -499,17 +331,26 @@ app.use("*", (req, res) => {
       root: "/",
       api: "/api",
       health: "/api/health",
-      auth: "/api/auth",
-      products: "/api/products",
-      categories: "/api/categories",
-      brands: "/api/brands",
-      cart: "/api/cart",
-      orders: "/api/orders",
-      wishlist: "/api/wishlist",
-      compare: "/api/compare",
-      users: "/api/users",
+      documentation: "Please check the API documentation at / for more details",
     },
-    documentation: "Please check the API documentation at / for more details",
+  });
+});
+
+/**
+ * ====================================
+ * Error Handling Middleware
+ * ====================================
+ */
+app.use((err, req, res, next) => {
+  console.error("Error:", err.stack);
+
+  const status = err.status || 500;
+  const message = err.message || "Internal Server Error";
+
+  res.status(status).json({
+    success: false,
+    error: message,
+    ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
   });
 });
 
