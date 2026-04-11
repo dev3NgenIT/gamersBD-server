@@ -26,7 +26,7 @@ const morgan = require("morgan");
 const compression = require("compression");
 const rateLimit = require("express-rate-limit");
 
-// Route imports - Fixed paths (remove ../ since app.js is in src folder)
+// Route imports
 const authRoutes = require("./routes/auth.routes");
 const healthRoutes = require("./routes/health.routes");
 const categoryRoutes = require("./routes/category.routes");
@@ -35,7 +35,7 @@ const brandRoutes = require("./routes/brand.routes");
 const cartRoutes = require("./routes/cart.routes");
 const productRoutes = require("./routes/product.routes");
 const orderRoutes = require("./routes/order.routes");
-const wishlistRoutes = require("./routes/wishlist.routes");
+const wishlistRoutes = require('./routes/wishlist.routes');
 const compareRoutes = require("./routes/compare.routes");
 const emailRoutes = require("./routes/email.routes");
 const blogRoutes = require("./routes/blog.routes");
@@ -169,14 +169,12 @@ app.use("/api/users", userRoutes);
 app.use("/api/brands", brandRoutes);
 
 // Cart routes
-console.log("🛒 Initializing cart routes...");
 app.use("/api/cart", cartRoutes);
-console.log("✅ Cart routes registered successfully");
 
 // Order routes
 app.use("/api/orders", orderRoutes);
 
-// Wishlist routes
+// Wishlist routes (ONCE - removed duplicate)
 app.use("/api/wishlist", wishlistRoutes);
 
 // Email routes
@@ -197,12 +195,13 @@ app.use("/api/settings", siteSettingRoutes);
 // Compare routes
 app.use("/api/compare", compareRoutes);
 
-// Add this temporary test route
+// Reviews route
+app.use('/api/reviews', reviewRoutes);
+
+// Test route
 app.get('/test-route', (req, res) => {
   res.json({ success: true, message: 'Test route working' });
 });
-// reviews route
-app.use('/api/reviews', reviewRoutes);
 
 /**
  * ====================================
@@ -297,7 +296,7 @@ app.get("/api", (req, res) => {
         endpoints: {
           get: { url: "/", method: "GET", auth: true },
           check: { url: "/check/:productId", method: "GET", auth: true },
-          add: { url: "/add/:productId", method: "POST", auth: true },
+          add: { url: "/add", method: "POST", auth: true },
           remove: { url: "/remove/:itemId", method: "DELETE", auth: true },
           clear: { url: "/clear", method: "DELETE", auth: true },
         },

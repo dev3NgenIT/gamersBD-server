@@ -1,4 +1,3 @@
-// models/Wishlist.js - COMPLETELY FIXED VERSION
 const mongoose = require('mongoose');
 
 const wishlistItemSchema = new mongoose.Schema({
@@ -45,28 +44,13 @@ const wishlistSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// ✅ FIXED: No pre-save middleware - handle shareId generation differently
-// Remove any pre('save') middleware completely
-
-// Virtual for totalItems
+// Virtual for total items
 wishlistSchema.virtual('totalItems').get(function() {
   return this.items ? this.items.length : 0;
 });
 
-// Method to generate share ID (call when making public)
-wishlistSchema.methods.generateShareId = function() {
-  this.shareId = Math.random().toString(36).substring(2, 15) + 
-                 Math.random().toString(36).substring(2, 15);
-  return this.shareId;
-};
-
 // Ensure virtuals are included
 wishlistSchema.set('toJSON', { virtuals: true });
 wishlistSchema.set('toObject', { virtuals: true });
-
-// Remove any existing model and create new one
-if (mongoose.models.Wishlist) {
-  delete mongoose.models.Wishlist;
-}
 
 module.exports = mongoose.model('Wishlist', wishlistSchema);
