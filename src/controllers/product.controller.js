@@ -169,35 +169,40 @@ const getProducts = async (req, res) => {
 // @desc    Get single product by ID
 // @route   GET /api/products/:id
 // @access  Public
+// In product.controller.js
 const getProductById = async (req, res) => {
   try {
+    console.log('Fetching product with ID:', req.params.id); // Debug log
+
     const product = await Product.findById(req.params.id)
-    .populate(
-      "category",
-      "name slug path",
-    )
-    .populate('brand'); // Populate brand data
+      .populate('category', 'name slug')
+      .populate('brand', 'name logo');
 
     if (!product) {
       return res.status(404).json({
         success: false,
-        message: "Product not found",
+        message: 'Product not found'
       });
     }
 
-    // Increment view count
-    product.views += 1;
-    await product.save();
-
     res.status(200).json({
       success: true,
-      data: product,
+      data: product
     });
   } catch (error) {
-    console.error("Get product error:", error);
+    console.error('Error fetching product:', error);
+
+    // Check if it's a invalid ObjectId error
+    if (error.name === 'CastError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid product ID format'
+      });
+    }
+
     res.status(500).json({
       success: false,
-      message: error.message,
+      message: error.message
     });
   }
 };

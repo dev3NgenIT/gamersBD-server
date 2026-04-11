@@ -11,9 +11,9 @@ const generateToken = (id, role) => {
 const register = async (req, res) => {
   try {
     console.log('📝 Register attempt:', req.body);
-    
+
     const { name, email, password } = req.body;
-    
+
     // Validation
     if (!name || !email || !password) {
       return res.status(400).json({
@@ -21,7 +21,7 @@ const register = async (req, res) => {
         message: 'Please provide name, email and password'
       });
     }
-    
+
     // Check existing user
     const userExists = await User.findOne({ email });
     if (userExists) {
@@ -30,7 +30,7 @@ const register = async (req, res) => {
         message: 'User already exists'
       });
     }
-    
+
     // Create user
     const user = await User.create({
       name,
@@ -38,9 +38,9 @@ const register = async (req, res) => {
       password,
       role: 'user'
     });
-    
+
     const token = generateToken(user._id, user.role);
-    
+
     res.status(201).json({
       success: true,
       message: 'User registered successfully',
@@ -65,36 +65,36 @@ const register = async (req, res) => {
 const login = async (req, res) => {
   try {
     console.log('🔐 Login attempt:', req.body.email);
-    
+
     const { email, password } = req.body;
-    
+
     if (!email || !password) {
       return res.status(400).json({
         success: false,
         message: 'Please provide email and password'
       });
     }
-    
+
     const user = await User.findOne({ email }).select('+password');
-    
+
     if (!user) {
       return res.status(401).json({
         success: false,
         message: 'Invalid email or password'
       });
     }
-    
+
     const isPasswordMatch = await user.comparePassword(password);
-    
+
     if (!isPasswordMatch) {
       return res.status(401).json({
         success: false,
         message: 'Invalid email or password'
       });
     }
-    
+
     const token = generateToken(user._id, user.role);
-    
+
     res.status(200).json({
       success: true,
       message: 'Login successful',
@@ -130,8 +130,54 @@ const getProfile = async (req, res) => {
   }
 };
 
+// In your auth.controller.js
 const updateProfile = async (req, res) => {
-  res.json({ success: true, message: 'Update profile endpoint' });
+  try {
+    const { avatar, firstName, lastName, phone, bio } = req.body;
+
+    const user = await User.findById(req.user._id);
+
+    // Handle base64 avatar
+    if (avatar) {
+      // Validate base64 format
+      const isValid = /^data:image\/(jpeg|png|jpg|gif|webp);base64,/.test(avatar);
+      if (!isValid) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid image format. Please provide a valid base64 image.'
+        });
+      }
+
+      // Check size (approx 5MB max)
+      const base64Size = Buffer.from(avatar.split(',')[1], 'base64').length;
+      if (base64Size > 5 * 1024 * 1024) {
+        return res.status(400).json({
+          success: false,
+          message: 'Image too large. Maximum 5MB allowed.'
+        });
+      }
+
+      user.avatar = avatar;
+    }
+
+    if (firstName) user.firstName = firstName;
+    if (lastName) user.lastName = lastName;
+    if (phone) user.phone = phone;
+    if (bio) user.bio = bio;
+
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Profile updated successfully',
+      data: user
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
 };
 
 const getUsers = async (req, res) => {

@@ -7,45 +7,23 @@ const protect = async (req, res, next) => {
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     try {
       token = req.headers.authorization.split(' ')[1];
-      
-      // Verify token - this will now contain both id and role
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      
-      // Get user from database
+
+      // Make sure this sets the user with _id
       req.user = await User.findById(decoded.id).select('-password');
-      
-      // Debug logging (remove in production)
-      console.log('Decoded token:', { id: decoded.id, role: decoded.role });
-      console.log('User role:', req.user?.role);
-      
+
       if (!req.user) {
         return res.status(401).json({
           success: false,
           message: 'User not found'
         });
       }
-      
+
       next();
     } catch (error) {
-      console.error('Auth error:', error);
-      
-      if (error.name === 'JsonWebTokenError') {
-        return res.status(401).json({
-          success: false,
-          message: 'Invalid token'
-        });
-      }
-      
-      if (error.name === 'TokenExpiredError') {
-        return res.status(401).json({
-          success: false,
-          message: 'Token expired'
-        });
-      }
-      
       return res.status(401).json({
         success: false,
-        message: 'Not authorized, token failed'
+        message: 'Not authorized'
       });
     }
   }

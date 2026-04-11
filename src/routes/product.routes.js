@@ -41,11 +41,14 @@ router.get("/category/:categoryId", getProductsByCategory);
 router.get("/latest", getLatestProducts);
 router.get("/price-range", getProductsByPriceRange);
 
-// Product detail routes
+// Related products route
 router.get("/:id/related", getRelatedProducts);
+
+// ============= IMPORTANT: Move this to the END =============
+// Product detail route (MUST BE LAST - catches single product by ID)
 router.get("/:id", getProductById);
 
-// Main product listing (least specific last)
+// Main product listing
 router.get("/", getProducts);
 
 // ============= PROTECTED ROUTES (ADMIN ONLY) =============

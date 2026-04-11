@@ -134,7 +134,7 @@ router.get('/', (req, res) => {
                         </a>
                     </div>
                     <div class="endpoint-item">
-                        <a href="https://gamersbd-server.onrender.com/api/products/:id" target="_blank">
+                        <a href="https://gamersbd-server.onrender.com/api/products/69d642e22f78882d7ad10ad0" target="_blank">
                             <span class="endpoint-method method-get">GET</span>
                             <span class="endpoint-path">https://gamersbd-server.onrender.com/api/products/:id</span>
                             <div class="endpoint-desc">Get single product by ID</div>
@@ -148,10 +148,11 @@ router.get('/', (req, res) => {
                         </a>
                     </div>
                     <div class="endpoint-item">
-                        <span class="endpoint-method method-get">GET</span><span
-                            class="endpoint-path">https://gamersbd-server.onrender.com/api/categories</span>
-                        <div class="endpoint-desc">Get all categories</div>
-                        </a></a>
+                        <a href="https://gamersbd-server.onrender.com/api/categories/699fd6b65e403c1dc2aa2b5f" target="_blank">
+                            <span class="endpoint-method method-get">GET</span>
+                            <span class="endpoint-path">https://gamersbd-server.onrender.com/api/categories/:id</span>
+                            <div class="endpoint-desc">Get category by ID</div>
+                        </a>
                     </div>
                     <div class="endpoint-item">
                         <a href="https://gamersbd-server.onrender.com/api/auth/register" target="_blank">

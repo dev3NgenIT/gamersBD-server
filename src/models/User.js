@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema({
+  // Basic Information
   name: {
     type: String,
     required: [true, 'Please add a name'],
@@ -12,7 +13,11 @@ const userSchema = new mongoose.Schema({
     required: [true, 'Please add an email'],
     unique: true,
     lowercase: true,
-    trim: true
+    trim: true,
+    match: [
+      /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/,
+      'Please add a valid email'
+    ]
   },
   password: {
     type: String,
@@ -20,46 +25,381 @@ const userSchema = new mongoose.Schema({
     minlength: 6,
     select: false
   },
+
+  // Personal Information
+  firstName: {
+    type: String,
+    default: '',
+    trim: true
+  },
+  lastName: {
+    type: String,
+    default: '',
+    trim: true
+  },
+  phone: {
+    type: String,
+    default: '',
+    match: [/^(\+)?[0-9\s\-\(\)]{10,15}$/, 'Please add a valid phone number']
+  },
+  bio: {
+    type: String,
+    default: '',
+    maxlength: [500, 'Bio cannot be more than 500 characters']
+  },
+  dateOfBirth: {
+    type: Date,
+    default: null
+  },
+  gender: {
+    type: String,
+    enum: ['male', 'female', 'other', 'prefer_not_to_say'],
+    default: 'prefer_not_to_say'
+  },
+
+  // Avatar (Base64)
+  avatar: {
+    type: String,
+    default: null,
+    validate: {
+      validator: function (v) {
+        if (!v) return true;
+        // Validate base64 image format
+        return /^data:image\/(jpeg|png|jpg|gif|webp);base64,/.test(v);
+      },
+      message: 'Avatar must be a valid base64 encoded image'
+    }
+  },
+
+  // Account Settings
   role: {
     type: String,
-    enum: ['user', 'admin', 'editor'],
+    enum: ['user', 'admin', 'editor', 'moderator'],
     default: 'user'
   },
-  firstName: { type: String, default: '' },
-  lastName: { type: String, default: '' },
-  phone: { type: String, default: '' },
-  bio: { type: String, default: '' },
-  avatar: { type: String, default: null }
-}, {
-  timestamps: true
-});
+  status: {
+    type: String,
+    enum: ['active', 'inactive', 'suspended', 'banned'],
+    default: 'active'
+  },
+  emailVerified: {
+    type: Boolean,
+    default: false
+  },
+  emailVerificationToken: {
+    type: String,
+    default: null
+  },
+  emailVerificationExpires: {
+    type: Date,
+    default: null
+  },
+  passwordResetToken: {
+    type: String,
+    default: null
+  },
+  passwordResetExpires: {
+    type: Date,
+    default: null
+  },
 
-// ====================================
-// ALTERNATIVE: Pre-save middleware using function() without relying on next
-// ====================================
-userSchema.pre('save', function() {
-  const user = this;
-  
-  if (!user.isModified('password')) {
-    return;
+  // Address Information
+  address: {
+    street: { type: String, default: '' },
+    city: { type: String, default: '' },
+    state: { type: String, default: '' },
+    postalCode: { type: String, default: '' },
+    country: { type: String, default: 'Bangladesh' },
+    isDefault: { type: Boolean, default: false }
+  },
+
+  // Multiple Addresses
+  addresses: [{
+    street: { type: String, required: true },
+    city: { type: String, required: true },
+    state: { type: String, required: true },
+    postalCode: { type: String, required: true },
+    country: { type: String, default: 'Bangladesh' },
+    isDefault: { type: Boolean, default: false },
+    label: { type: String, default: 'Home' } // Home, Work, etc.
+  }],
+
+  // Social Links
+  social: {
+    facebook: { type: String, default: '' },
+    twitter: { type: String, default: '' },
+    instagram: { type: String, default: '' },
+    linkedin: { type: String, default: '' },
+    discord: { type: String, default: '' },
+    twitch: { type: String, default: '' },
+    youtube: { type: String, default: '' }
+  },
+
+  // Gaming Preferences
+  gaming: {
+    favoritePlatforms: [{
+      type: String,
+      enum: ['PS5', 'Xbox', 'PC', 'Nintendo Switch', 'Mobile']
+    }],
+    favoriteGenres: [{
+      type: String,
+      enum: ['Action', 'Adventure', 'RPG', 'Shooter', 'Strategy', 'Sports', 'Racing', 'Horror', 'Fighting']
+    }],
+    gamerTag: { type: String, default: '' },
+    steamId: { type: String, default: '' },
+    epicId: { type: String, default: '' },
+    xboxGamertag: { type: String, default: '' },
+    psnId: { type: String, default: '' }
+  },
+
+  // Preferences
+  preferences: {
+    newsletter: { type: Boolean, default: false },
+    emailNotifications: { type: Boolean, default: true },
+    smsNotifications: { type: Boolean, default: false },
+    twoFactorEnabled: { type: Boolean, default: false },
+    twoFactorSecret: { type: String, default: null },
+    language: { type: String, default: 'en' },
+    currency: { type: String, default: 'BDT' },
+    timezone: { type: String, default: 'Asia/Dhaka' }
+  },
+
+  // Statistics
+  stats: {
+    totalOrders: { type: Number, default: 0 },
+    totalSpent: { type: Number, default: 0 },
+    reviewsWritten: { type: Number, default: 0 },
+    wishlistCount: { type: Number, default: 0 },
+    lastLoginAt: { type: Date, default: null },
+    loginCount: { type: Number, default: 0 }
+  },
+
+  // Wishlist (references to products)
+  wishlist: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Product'
+  }],
+
+  // Compare list
+  compareList: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Product'
+  }],
+
+  // Recently viewed products
+  recentlyViewed: [{
+    product: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Product'
+    },
+    viewedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
+
+  // Security
+  lastPasswordChange: {
+    type: Date,
+    default: Date.now
+  },
+  sessionTokens: [{
+    token: String,
+    device: String,
+    browser: String,
+    ip: String,
+    createdAt: { type: Date, default: Date.now }
+  }],
+
+  // Account deletion
+  deletionRequested: {
+    type: Boolean,
+    default: false
+  },
+  deletionScheduledAt: {
+    type: Date,
+    default: null
   }
-  
-  return bcrypt.genSalt(10)
-    .then(salt => {
-      return bcrypt.hash(user.password, salt);
-    })
-    .then(hash => {
-      user.password = hash;
-    })
-    .catch(err => {
-      console.error('Password hashing error:', err);
-      throw err;
-    });
+}, {
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
 
-// Compare password method
-userSchema.methods.comparePassword = async function(enteredPassword) {
+// ====================================
+// Indexes for better performance
+// ====================================
+userSchema.index({ email: 1 });
+userSchema.index({ role: 1 });
+userSchema.index({ status: 1 });
+userSchema.index({ 'gaming.gamerTag': 1 });
+userSchema.index({ createdAt: -1 });
+
+// ====================================
+// Virtuals
+// ====================================
+userSchema.virtual('fullName').get(function () {
+  return `${this.firstName} ${this.lastName}`.trim() || this.name;
+});
+
+userSchema.virtual('initials').get(function () {
+  return this.name
+    .split(' ')
+    .map(n => n[0])
+    .join('')
+    .toUpperCase()
+    .substring(0, 2);
+});
+
+// ====================================
+// Pre-save middleware - Hash password
+// ====================================
+userSchema.pre('save', async function (next) {
+  if (!this.isModified('password')) {
+    return next();
+  }
+
+  try {
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ====================================
+// Pre-save middleware - Update name from firstName/lastName
+// ====================================
+userSchema.pre('save', function (next) {
+  if (this.firstName || this.lastName) {
+    const firstName = this.firstName || '';
+    const lastName = this.lastName || '';
+    this.name = `${firstName} ${lastName}`.trim();
+  }
+  next();
+});
+
+// ====================================
+// Methods
+// ====================================
+
+// Compare password
+userSchema.methods.comparePassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
+};
+
+// Update login stats
+userSchema.methods.updateLoginStats = async function (deviceInfo = {}) {
+  this.stats.lastLoginAt = new Date();
+  this.stats.loginCount += 1;
+
+  // Add session token
+  if (deviceInfo.token) {
+    this.sessionTokens.push({
+      token: deviceInfo.token,
+      device: deviceInfo.device || 'Unknown',
+      browser: deviceInfo.browser || 'Unknown',
+      ip: deviceInfo.ip || 'Unknown'
+    });
+
+    // Keep only last 10 sessions
+    if (this.sessionTokens.length > 10) {
+      this.sessionTokens = this.sessionTokens.slice(-10);
+    }
+  }
+
+  await this.save();
+};
+
+// Add to recently viewed
+userSchema.methods.addToRecentlyViewed = async function (productId) {
+  // Remove if already exists
+  this.recentlyViewed = this.recentlyViewed.filter(
+    item => item.product.toString() !== productId.toString()
+  );
+
+  // Add to beginning
+  this.recentlyViewed.unshift({ product: productId, viewedAt: new Date() });
+
+  // Keep only last 20
+  if (this.recentlyViewed.length > 20) {
+    this.recentlyViewed = this.recentlyViewed.slice(0, 20);
+  }
+
+  await this.save();
+};
+
+// Add to wishlist
+userSchema.methods.addToWishlist = async function (productId) {
+  if (!this.wishlist.includes(productId)) {
+    this.wishlist.push(productId);
+    this.stats.wishlistCount = this.wishlist.length;
+    await this.save();
+  }
+  return this.wishlist;
+};
+
+// Remove from wishlist
+userSchema.methods.removeFromWishlist = async function (productId) {
+  this.wishlist = this.wishlist.filter(
+    id => id.toString() !== productId.toString()
+  );
+  this.stats.wishlistCount = this.wishlist.length;
+  await this.save();
+  return this.wishlist;
+};
+
+// Generate email verification token
+userSchema.methods.generateEmailVerificationToken = function () {
+  const token = crypto.randomBytes(32).toString('hex');
+  this.emailVerificationToken = token;
+  this.emailVerificationExpires = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+  return token;
+};
+
+// Generate password reset token
+userSchema.methods.generatePasswordResetToken = function () {
+  const token = crypto.randomBytes(32).toString('hex');
+  this.passwordResetToken = token;
+  this.passwordResetExpires = Date.now() + 1 * 60 * 60 * 1000; // 1 hour
+  return token;
+};
+
+// ====================================
+// Static Methods
+// ====================================
+
+// Find active users
+userSchema.statics.findActive = function () {
+  return this.find({ status: 'active' });
+};
+
+// Get user statistics
+userSchema.statics.getStats = async function () {
+  return {
+    total: await this.countDocuments(),
+    active: await this.countDocuments({ status: 'active' }),
+    admins: await this.countDocuments({ role: 'admin' }),
+    users: await this.countDocuments({ role: 'user' }),
+    verified: await this.countDocuments({ emailVerified: true }),
+    newToday: await this.countDocuments({
+      createdAt: { $gte: new Date().setHours(0, 0, 0, 0) }
+    })
+  };
+};
+
+// ====================================
+// Helper function to convert image to base64
+// ====================================
+const imageToBase64 = (imageBuffer, mimeType) => {
+  return `data:${mimeType};base64,${imageBuffer.toString('base64')}`;
+};
+
+// Helper function to validate base64 image
+const isValidBase64Image = (base64String) => {
+  if (!base64String) return true;
+  return /^data:image\/(jpeg|png|jpg|gif|webp);base64,/.test(base64String);
 };
 
 module.exports = mongoose.model('User', userSchema);

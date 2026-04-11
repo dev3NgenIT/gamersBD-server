@@ -34,24 +34,26 @@ const cartSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
   }
 );
 
-// Virtual for total items
+// Virtual for total items (works without population)
 cartSchema.virtual("totalItems").get(function () {
   return this.items.reduce((total, item) => total + item.quantity, 0);
 });
 
-// Virtual for total price
+// Virtual for total price (safe - returns 0 if product not populated)
 cartSchema.virtual("totalPrice").get(function () {
   return this.items.reduce((total, item) => {
-    const price = item.product?.discountPrice || item.product?.price || 0;
-    return total + price * item.quantity;
+    // Check if product is populated
+    if (item.product && typeof item.product === 'object') {
+      const price = item.product.discountPrice || item.product.price || 0;
+      return total + price * item.quantity;
+    }
+    return total;
   }, 0);
 });
-
-// Ensure virtuals are included in JSON output
-cartSchema.set("toJSON", { virtuals: true });
-cartSchema.set("toObject", { virtuals: true });
 
 module.exports = mongoose.model("Cart", cartSchema);

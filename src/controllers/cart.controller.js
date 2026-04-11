@@ -6,10 +6,11 @@ const Product = require("../models/Product");
 // @access  Private
 const getCart = async (req, res) => {
   try {
-    let cart = await Cart.findOne({ user: req.user._id }).populate({
-      path: "items.product",
-      select: "name price discountPrice images stock category slug platform",
-    });
+    let cart = await Cart.findOne({ user: req.user._id })
+      .populate({
+        path: "items.product",
+        select: "name price discountPrice images stock category slug platform",
+      });
 
     if (!cart) {
       cart = await Cart.create({
@@ -18,9 +19,20 @@ const getCart = async (req, res) => {
       });
     }
 
+    // Calculate totals manually
+    const totalItems = cart.items.reduce((sum, item) => sum + item.quantity, 0);
+    const totalPrice = cart.items.reduce((sum, item) => {
+      const price = item.product?.discountPrice || item.product?.price || 0;
+      return sum + (price * item.quantity);
+    }, 0);
+
     res.json({
       success: true,
-      cart,
+      cart: {
+        ...cart.toObject(),
+        totalItems,
+        totalPrice
+      },
     });
   } catch (error) {
     console.error("Get cart error:", error);
@@ -36,7 +48,7 @@ const getCart = async (req, res) => {
 // @access  Private
 const addToCart = async (req, res) => {
   console.log("📦 Adding to cart:", req.body);
-  
+
   try {
     const { productId, quantity = 1, platform = "PS5" } = req.body;
 
@@ -65,7 +77,7 @@ const addToCart = async (req, res) => {
 
     // Find or create cart
     let cart = await Cart.findOne({ user: req.user._id });
-    
+
     if (!cart) {
       cart = new Cart({
         user: req.user._id,
@@ -81,14 +93,14 @@ const addToCart = async (req, res) => {
     if (existingItemIndex > -1) {
       // Update quantity
       const newQuantity = cart.items[existingItemIndex].quantity + quantity;
-      
+
       if (product.stock < newQuantity) {
         return res.status(400).json({
           success: false,
           message: `Cannot add ${quantity} more. Only ${product.stock - cart.items[existingItemIndex].quantity} available.`,
         });
       }
-      
+
       cart.items[existingItemIndex].quantity = newQuantity;
     } else {
       // Add new item
@@ -100,7 +112,7 @@ const addToCart = async (req, res) => {
     }
 
     await cart.save();
-    
+
     // Populate product details
     await cart.populate({
       path: "items.product",
@@ -340,6 +352,116 @@ const testCart = (req, res) => {
   });
 };
 
+// Add this function to your cart.controller.js
+
+// @desc    Sync guest cart with user cart after login
+// @route   POST /api/cart/sync
+// @access  Private
+const syncGuestCart = async (req, res) => {
+  try {
+    const { guestItems } = req.body;
+    const userId = req.user._id;
+
+    console.log("🔄 Syncing cart for user:", userId);
+    console.log("📦 Guest items:", guestItems);
+
+    if (!guestItems || !Array.isArray(guestItems) || guestItems.length === 0) {
+      // No guest items to sync, just return current cart
+      let cart = await Cart.findOne({ user: userId }).populate({
+        path: "items.product",
+        select: "name price discountPrice images stock category slug platform",
+      });
+
+      if (!cart) {
+        cart = await Cart.create({ user: userId, items: [] });
+      }
+
+      return res.json({
+        success: true,
+        message: "No guest items to sync",
+        cart,
+      });
+    }
+
+    // Find or create user cart
+    let cart = await Cart.findOne({ user: userId });
+
+    if (!cart) {
+      cart = await Cart.create({ user: userId, items: [] });
+    }
+
+    // Merge guest items with existing cart
+    for (const guestItem of guestItems) {
+      const { productId, quantity, platform = "PS5" } = guestItem;
+
+      // Verify product exists and has stock
+      const product = await Product.findById(productId);
+      if (!product) {
+        console.warn(`Product not found: ${productId}, skipping`);
+        continue;
+      }
+
+      // Check if product already in cart
+      const existingItemIndex = cart.items.findIndex(
+        (item) => item.product.toString() === productId
+      );
+
+      if (existingItemIndex > -1) {
+        // Update quantity
+        const newQuantity = cart.items[existingItemIndex].quantity + quantity;
+
+        // Check stock limit
+        if (product.stock >= newQuantity) {
+          cart.items[existingItemIndex].quantity = newQuantity;
+        } else {
+          cart.items[existingItemIndex].quantity = product.stock;
+          console.warn(`Stock limit reached for product: ${product.name}`);
+        }
+      } else {
+        // Add new item
+        cart.items.push({
+          product: productId,
+          quantity: Math.min(quantity, product.stock || 0),
+          platform,
+        });
+      }
+    }
+
+    await cart.save();
+
+    // Populate product details
+    await cart.populate({
+      path: "items.product",
+      select: "name price discountPrice images stock category slug platform",
+    });
+
+    // Calculate totals
+    const totalItems = cart.items.reduce((sum, item) => sum + item.quantity, 0);
+    const totalPrice = cart.items.reduce((sum, item) => {
+      const price = item.product?.discountPrice || item.product?.price || 0;
+      return sum + (price * item.quantity);
+    }, 0);
+
+    console.log("✅ Cart synced successfully");
+
+    res.json({
+      success: true,
+      message: "Cart synced successfully",
+      cart: {
+        ...cart.toObject(),
+        totalItems,
+        totalPrice
+      },
+    });
+  } catch (error) {
+    console.error("Sync cart error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 module.exports = {
   getCart,
   addToCart,
@@ -349,4 +471,5 @@ module.exports = {
   getCartCount,
   validateCart,
   testCart,
+  syncGuestCart,
 };
