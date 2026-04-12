@@ -1,10 +1,49 @@
 // controllers/category.controller.js
 const Category = require("../models/Category");
 
+// Helper function to validate and process Base64 image
+const processBase64Image = (base64String) => {
+  if (!base64String) return null;
+  
+  // Check if it's a Base64 string
+  const base64Regex = /^data:image\/(jpeg|jpg|png|webp|gif|bmp);base64,/;
+  
+  if (base64Regex.test(base64String)) {
+    // Validate size (max 2MB for Base64)
+    const base64Data = base64String.split(',')[1];
+    const base64Size = Buffer.from(base64Data, 'base64').length;
+    if (base64Size > 2 * 1024 * 1024) {
+      throw new Error('Image size must be less than 2MB');
+    }
+    return base64String;
+  }
+  
+  // If it's a URL, return as is
+  if (base64String && (base64String.startsWith('http') || base64String.startsWith('/uploads'))) {
+    return base64String;
+  }
+  
+  return null;
+};
+
+// Helper function to validate image
+const isValidImage = (imageData) => {
+  if (!imageData) return true;
+  
+  // Check if it's a valid URL or Base64
+  const urlPattern = /^https?:\/\/.+\.(jpg|jpeg|png|webp|gif|bmp|svg)$/i;
+  const base64Pattern = /^data:image\/(jpeg|jpg|png|webp|gif|bmp);base64,/;
+  
+  return urlPattern.test(imageData) || base64Pattern.test(imageData);
+};
+
 // Get all categories
 const getCategories = async (req, res) => {
   try {
-    const categories = await Category.find().populate("parent", "name slug");
+    const categories = await Category.find()
+      .populate("parent", "name slug image")
+      .sort("order name");
+
     res.status(200).json({
       success: true,
       count: categories.length,
@@ -23,7 +62,7 @@ const getCategoryById = async (req, res) => {
   try {
     const category = await Category.findById(req.params.id).populate(
       "parent",
-      "name slug",
+      "name slug image",
     );
 
     if (!category) {
@@ -49,18 +88,21 @@ const getCategoryById = async (req, res) => {
 const getCategoryBySlug = async (req, res) => {
   try {
     const { slug } = req.params;
-    
+
     // First try to find by slug
-    let category = await Category.findOne({ slug }).populate("parent", "name slug");
-    
+    let category = await Category.findOne({ slug }).populate(
+      "parent",
+      "name slug image",
+    );
+
     // If not found by slug, try to find by name (for backward compatibility)
     if (!category) {
-      const decodedSlug = decodeURIComponent(slug).replace(/-/g, ' ');
-      category = await Category.findOne({ 
-        name: { $regex: new RegExp(`^${decodedSlug}$`, 'i') } 
-      }).populate("parent", "name slug");
+      const decodedSlug = decodeURIComponent(slug).replace(/-/g, " ");
+      category = await Category.findOne({
+        name: { $regex: new RegExp(`^${decodedSlug}$`, "i") },
+      }).populate("parent", "name slug image");
     }
-    
+
     if (!category) {
       return res.status(404).json({
         success: false,
@@ -70,13 +112,16 @@ const getCategoryBySlug = async (req, res) => {
 
     // Get subcategories
     const subcategories = await Category.find({ parent: category._id })
-      .select('_id name slug description image level');
-    
+      .select(
+        "_id name slug description image imageAlt icon level order featured",
+      )
+      .sort("order name");
+
     res.status(200).json({
       success: true,
       data: {
         ...category.toObject(),
-        subcategories
+        subcategories,
       },
     });
   } catch (error) {
@@ -91,26 +136,26 @@ const getCategoryBySlug = async (req, res) => {
 const getSubcategories = async (req, res) => {
   try {
     const { id } = req.params;
-    
-    console.log('Getting subcategories for category ID:', id);
-    
+
+    console.log("Getting subcategories for category ID:", id);
+
     // Find category by ID
     const category = await Category.findById(id);
-    
+
     if (!category) {
       return res.status(404).json({
         success: false,
-        message: 'Category not found'
+        message: "Category not found",
       });
     }
-    
+
     // Get subcategories (categories that have this category as parent)
-    const subcategories = await Category.find({ 
-      parent: id
-    }).select('_id name slug description image level');
-    
+    const subcategories = await Category.find({
+      parent: id,
+    }).select("_id name slug description image level");
+
     console.log(`Found ${subcategories.length} subcategories`);
-    
+
     res.json({
       success: true,
       data: subcategories,
@@ -118,15 +163,14 @@ const getSubcategories = async (req, res) => {
       parentCategory: {
         id: category._id,
         name: category.name,
-        slug: category.slug
-      }
+        slug: category.slug,
+      },
     });
-    
   } catch (error) {
-    console.error('Error in getSubcategories:', error);
+    console.error("Error in getSubcategories:", error);
     res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
 };
@@ -135,58 +179,63 @@ const getSubcategories = async (req, res) => {
 const getSubcategoryBySlug = async (req, res) => {
   try {
     const { categorySlug, subcategorySlug } = req.params;
-    
-    console.log('Looking for subcategory:', { categorySlug, subcategorySlug });
-    
+
+    console.log("Looking for subcategory:", { categorySlug, subcategorySlug });
+
     // First find the parent category
     let parentCategory = await Category.findOne({ slug: categorySlug });
     if (!parentCategory) {
-      const decodedSlug = decodeURIComponent(categorySlug).replace(/-/g, ' ');
-      parentCategory = await Category.findOne({ 
-        name: { $regex: new RegExp(`^${decodedSlug}$`, 'i') } 
+      const decodedSlug = decodeURIComponent(categorySlug).replace(/-/g, " ");
+      parentCategory = await Category.findOne({
+        name: { $regex: new RegExp(`^${decodedSlug}$`, "i") },
       });
     }
-    
+
     if (!parentCategory) {
-      console.log('Parent category not found:', categorySlug);
+      console.log("Parent category not found:", categorySlug);
       return res.status(404).json({
         success: false,
         message: "Category not found",
       });
     }
-    
+
     // Find subcategory by slug that has parent = parentCategory._id
-    let subcategory = await Category.findOne({ 
+    let subcategory = await Category.findOne({
       slug: subcategorySlug,
-      parent: parentCategory._id
-    }).populate('parent', 'name slug');
-    
+      parent: parentCategory._id,
+    }).populate("parent", "name slug");
+
     if (!subcategory) {
       // Try to find by name
-      const decodedSlug = decodeURIComponent(subcategorySlug).replace(/-/g, ' ');
-      subcategory = await Category.findOne({ 
-        name: { $regex: new RegExp(`^${decodedSlug}$`, 'i') },
-        parent: parentCategory._id
-      }).populate('parent', 'name slug');
+      const decodedSlug = decodeURIComponent(subcategorySlug).replace(
+        /-/g,
+        " ",
+      );
+      subcategory = await Category.findOne({
+        name: { $regex: new RegExp(`^${decodedSlug}$`, "i") },
+        parent: parentCategory._id,
+      }).populate("parent", "name slug");
     }
-    
+
     if (!subcategory) {
-      console.log('Subcategory not found:', subcategorySlug);
+      console.log("Subcategory not found:", subcategorySlug);
       return res.status(404).json({
         success: false,
         message: "Subcategory not found",
       });
     }
-    
-    console.log('Found subcategory:', subcategory.name);
-    
+
+    console.log("Found subcategory:", subcategory.name);
+
     // Get products for this subcategory
     const Product = require("../models/Product");
-    const products = await Product.find({ 
+    const products = await Product.find({
       category: subcategory._id,
-      isActive: true 
-    }).select('_id name price discountPrice originalPrice images mainImage rating inStock stock slug');
-    
+      isActive: true,
+    }).select(
+      "_id name price discountPrice originalPrice images mainImage rating inStock stock slug",
+    );
+
     res.status(200).json({
       success: true,
       data: {
@@ -194,13 +243,13 @@ const getSubcategoryBySlug = async (req, res) => {
         parentCategory: {
           _id: parentCategory._id,
           name: parentCategory.name,
-          slug: parentCategory.slug
+          slug: parentCategory.slug,
         },
-        products
+        products,
       },
     });
   } catch (error) {
-    console.error('Error in getSubcategoryBySlug:', error);
+    console.error("Error in getSubcategoryBySlug:", error);
     res.status(500).json({
       success: false,
       message: error.message,
@@ -212,30 +261,34 @@ const getSubcategoryBySlug = async (req, res) => {
 const getProductsByCategory = async (req, res) => {
   try {
     const { id } = req.params;
-    
-    console.log('Getting products for category:', id);
-    
+
+    console.log("Getting products for category:", id);
+
     // Check if category exists
     const category = await Category.findById(id);
-    
+
     if (!category) {
       return res.status(404).json({
         success: false,
         message: "Category not found",
       });
     }
-    
+
     // Import Product model
     const Product = require("../models/Product");
-    
+
     // Find products that belong to this category
-    const products = await Product.find({ 
+    const products = await Product.find({
       category: id,
-      isActive: true 
-    }).select('_id name price discountPrice originalPrice images mainImage rating inStock stock slug');
-    
-    console.log(`Found ${products.length} products for category ${category.name}`);
-    
+      isActive: true,
+    }).select(
+      "_id name price discountPrice originalPrice images mainImage rating inStock stock slug",
+    );
+
+    console.log(
+      `Found ${products.length} products for category ${category.name}`,
+    );
+
     res.status(200).json({
       success: true,
       count: products.length,
@@ -243,12 +296,11 @@ const getProductsByCategory = async (req, res) => {
       category: {
         _id: category._id,
         name: category.name,
-        slug: category.slug
-      }
+        slug: category.slug,
+      },
     });
-    
   } catch (error) {
-    console.error('Error in getProductsByCategory:', error);
+    console.error("Error in getProductsByCategory:", error);
     res.status(500).json({
       success: false,
       message: error.message,
@@ -259,7 +311,19 @@ const getProductsByCategory = async (req, res) => {
 // Create category
 const createCategory = async (req, res) => {
   try {
-    const { name, description, image, parent } = req.body;
+    const {
+      name,
+      description,
+      image,
+      imageAlt,
+      bannerImage,
+      icon,
+      parent,
+      metaTitle,
+      metaDescription,
+      order,
+      featured,
+    } = req.body;
 
     // Create slug from name
     const slug = name
@@ -276,13 +340,34 @@ const createCategory = async (req, res) => {
       }
     }
 
+    // Process Base64 images
+    let processedImage = null;
+    let processedBannerImage = null;
+    
+    try {
+      processedImage = processBase64Image(image);
+      processedBannerImage = processBase64Image(bannerImage);
+    } catch (error) {
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
     const category = await Category.create({
       name,
       slug,
-      description,
-      image,
+      description: description || "",
+      image: processedImage,
+      imageAlt: imageAlt || "",
+      bannerImage: processedBannerImage,
+      icon: icon || null,
       parent: parent || null,
       level,
+      metaTitle: metaTitle || name,
+      metaDescription: metaDescription || description || "",
+      order: order || 0,
+      featured: featured || false,
     });
 
     res.status(201).json({
@@ -291,6 +376,7 @@ const createCategory = async (req, res) => {
       data: category,
     });
   } catch (error) {
+    console.error("Create error:", error);
     res.status(500).json({
       success: false,
       message: error.message,
@@ -301,13 +387,55 @@ const createCategory = async (req, res) => {
 // Update category
 const updateCategory = async (req, res) => {
   try {
-    const { name, description, image, parent } = req.body;
-    
-    const updateData = {
+    const {
+      name,
       description,
       image,
+      imageAlt,
+      bannerImage,
+      icon,
+      parent,
+      metaTitle,
+      metaDescription,
+      order,
+      featured,
+      isActive,
+    } = req.body;
+
+    const updateData = {
+      description: description || "",
+      imageAlt: imageAlt || "",
+      metaTitle: metaTitle || "",
+      metaDescription: metaDescription || "",
     };
-    
+
+    // Process Base64 images if provided
+    if (image !== undefined) {
+      try {
+        updateData.image = processBase64Image(image);
+      } catch (error) {
+        return res.status(400).json({
+          success: false,
+          message: error.message,
+        });
+      }
+    }
+
+    if (bannerImage !== undefined) {
+      try {
+        updateData.bannerImage = processBase64Image(bannerImage);
+      } catch (error) {
+        return res.status(400).json({
+          success: false,
+          message: error.message,
+        });
+      }
+    }
+
+    if (icon !== undefined) {
+      updateData.icon = icon || null;
+    }
+
     if (name) {
       updateData.name = name;
       updateData.slug = name
@@ -317,12 +445,12 @@ const updateCategory = async (req, res) => {
     }
 
     if (parent !== undefined) {
-      if (parent && parent !== '') {
+      if (parent && parent !== "") {
         const parentCategory = await Category.findById(parent);
         if (parentCategory) {
           updateData.level = parentCategory.level + 1;
           updateData.parent = parent;
-        } else if (parent === null || parent === '') {
+        } else if (parent === null || parent === "") {
           updateData.level = 0;
           updateData.parent = null;
         }
@@ -332,11 +460,15 @@ const updateCategory = async (req, res) => {
       }
     }
 
+    if (order !== undefined) updateData.order = order;
+    if (featured !== undefined) updateData.featured = featured;
+    if (isActive !== undefined) updateData.isActive = isActive;
+
     const category = await Category.findByIdAndUpdate(
       req.params.id,
       updateData,
-      { new: true, runValidators: true }
-    ).populate('parent', 'name slug');
+      { new: true, runValidators: true },
+    ).populate("parent", "name slug image");
 
     if (!category) {
       return res.status(404).json({
@@ -351,7 +483,7 @@ const updateCategory = async (req, res) => {
       data: category,
     });
   } catch (error) {
-    console.error('Update error:', error);
+    console.error("Update error:", error);
     res.status(500).json({
       success: false,
       message: error.message,
@@ -396,21 +528,33 @@ const deleteCategory = async (req, res) => {
 const getCategoryTree = async (req, res) => {
   try {
     // Get all top-level categories (parent = null)
-    const topLevelCategories = await Category.find({ parent: null })
-      .select('_id name slug description image level');
-    
+    const topLevelCategories = await Category.find({
+      parent: null,
+      isActive: true,
+    })
+      .select(
+        "_id name slug description image imageAlt icon level order featured",
+      )
+      .sort("order name");
+
     // For each top-level category, get its subcategories
     const categoryTree = await Promise.all(
       topLevelCategories.map(async (category) => {
-        const subcategories = await Category.find({ parent: category._id })
-          .select('_id name slug description image level');
+        const subcategories = await Category.find({
+          parent: category._id,
+          isActive: true,
+        })
+          .select(
+            "_id name slug description image imageAlt icon level order featured",
+          )
+          .sort("order name");
         return {
           ...category.toObject(),
-          subcategories
+          subcategories,
         };
-      })
+      }),
     );
-    
+
     res.status(200).json({
       success: true,
       data: categoryTree,
@@ -429,7 +573,7 @@ module.exports = {
   getCategoryBySlug,
   getSubcategories,
   getSubcategoryBySlug,
-  getProductsByCategory,  // Fixed: Changed from getProductsBySubcategory
+  getProductsByCategory,
   createCategory,
   updateCategory,
   deleteCategory,

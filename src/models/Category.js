@@ -21,6 +21,18 @@ const categorySchema = new mongoose.Schema({
     type: String,
     default: null,
   },
+  imageAlt: {
+    type: String,
+    default: '',
+  },
+  bannerImage: {
+    type: String,
+    default: null,
+  },
+  icon: {
+    type: String,
+    default: null,
+  },
   parent: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Category',
@@ -33,6 +45,22 @@ const categorySchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true,
+  },
+  metaTitle: {
+    type: String,
+    default: '',
+  },
+  metaDescription: {
+    type: String,
+    default: '',
+  },
+  order: {
+    type: Number,
+    default: 0,
+  },
+  featured: {
+    type: Boolean,
+    default: false,
   },
 }, {
   timestamps: true,
