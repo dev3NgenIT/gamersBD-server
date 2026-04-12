@@ -383,7 +383,7 @@ productSchema.pre("save", function (next) {
       .padStart(3, "0");
     this.sku = `${prefix}-${timestamp}-${random}`;
   }
-  next();
+  // next();
 });
 
 const Product = mongoose.model("Product", productSchema);

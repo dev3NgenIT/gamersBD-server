@@ -125,7 +125,7 @@ blogSchema.pre("save", function (next) {
       .replace(/-+/g, "-")
       .replace(/^-|-$/g, "");
   }
-  next();
+  // next();
 });
 
 // Update comment count when comments are modified

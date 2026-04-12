@@ -57,7 +57,7 @@ reviewSchema.pre(/^find/, function(next) {
     path: 'user',
     select: 'name email avatar',
   });
-  next();
+  // next();
 });
 
 module.exports = mongoose.model('Review', reviewSchema);

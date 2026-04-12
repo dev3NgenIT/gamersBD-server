@@ -95,7 +95,7 @@ brandSchema.pre("save", function (next) {
       .replace(/-+/g, "-") // Replace multiple hyphens with single hyphen
       .replace(/^-|-$/g, ""); // Remove leading/trailing hyphens
   }
-  next();
+  // next();
 });
 
 // Index for search
