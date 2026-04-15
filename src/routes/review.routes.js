@@ -1,3 +1,4 @@
+// routes/review.routes.js
 const express = require('express');
 const router = express.Router();
 const {
@@ -12,7 +13,7 @@ const { protect } = require('../middleware/auth.middleware');
 // Public routes
 router.get('/product/:productId', getProductReviews);
 
-// Protected routes
+// Protected routes (require authentication)
 router.use(protect);
 router.post('/product/:productId', createReview);
 router.put('/:reviewId', updateReview);
