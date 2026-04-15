@@ -34,7 +34,18 @@ const productSchema = new mongoose.Schema(
       min: [0, "Discount price cannot be negative"],
       validate: {
         validator: function (value) {
-          return !value || value < this.price;
+          // Only validate when product is on sale and value is provided
+          if (
+            this.isOnSale === true &&
+            value !== undefined &&
+            value !== null &&
+            value > 0
+          ) {
+            if (value >= this.price) {
+              return false;
+            }
+          }
+          return true;
         },
         message: "Discount price must be less than regular price",
       },
