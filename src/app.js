@@ -44,6 +44,7 @@ const faqRoutes = require("./routes/faq.routes");
 const siteSettingRoutes = require("./routes/siteSetting.routes");
 const indexRoutes = require('./routes/index');
 const reviewRoutes = require('./routes/review.routes');
+const homeSettingsRoutes = require('./routes/homeSettings.routes'); // Note the correct filename
 
 // Initialize Express application
 const app = express();
@@ -197,6 +198,7 @@ app.use("/api/compare", compareRoutes);
 
 // Reviews route
 app.use('/api/reviews', reviewRoutes);
+app.use('/api/home-settings', homeSettingsRoutes);
 
 // Test route
 app.get('/test-route', (req, res) => {
