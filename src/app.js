@@ -35,16 +35,16 @@ const brandRoutes = require("./routes/brand.routes");
 const cartRoutes = require("./routes/cart.routes");
 const productRoutes = require("./routes/product.routes");
 const orderRoutes = require("./routes/order.routes");
-const wishlistRoutes = require('./routes/wishlist.routes');
+const wishlistRoutes = require("./routes/wishlist.routes");
 const compareRoutes = require("./routes/compare.routes");
 const emailRoutes = require("./routes/email.routes");
 const blogRoutes = require("./routes/blog.routes");
 const contactRoutes = require("./routes/contact.routes");
 const faqRoutes = require("./routes/faq.routes");
 const siteSettingRoutes = require("./routes/siteSetting.routes");
-const indexRoutes = require('./routes/index');
-const reviewRoutes = require('./routes/review.routes');
-const homeSettingsRoutes = require('./routes/homeSettings.routes'); // Note the correct filename
+const indexRoutes = require("./routes/index");
+const reviewRoutes = require("./routes/review.routes");
+const homeSettingsRoutes = require("./routes/homeSettings.routes");
 
 // Initialize Express application
 const app = express();
@@ -138,21 +138,54 @@ const limiter = rateLimit({
 });
 app.use("/api", limiter);
 
+// Specific rate limiter for image uploads (heavier operations)
+const uploadLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 50, // Limit each IP to 50 image uploads per hour
+  message: {
+    success: false,
+    message: "Too many upload requests, please try again later.",
+  },
+});
+
 /**
  * ====================================
  * Root Endpoint - API Information
  * ====================================
  */
 
-app.use('/', indexRoutes);
+app.use("/", indexRoutes);
 
 /**
  * ====================================
  * API Routes
  * ====================================
  */
+
 // Health check endpoint
 app.use("/api/health", healthRoutes);
+
+// Home settings health check
+app.get("/api/health/home-settings", async (req, res) => {
+  try {
+    const HomeSettings = require("./models/HomeSettings");
+    const settings = await HomeSettings.findOne();
+    res.status(200).json({
+      success: true,
+      status: "healthy",
+      hasSettings: !!settings,
+      message: "Home settings API is operational",
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      status: "unhealthy",
+      error: error.message,
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
 
 // Auth routes
 app.use("/api/auth", authRoutes);
@@ -175,7 +208,7 @@ app.use("/api/cart", cartRoutes);
 // Order routes
 app.use("/api/orders", orderRoutes);
 
-// Wishlist routes (ONCE - removed duplicate)
+// Wishlist routes
 app.use("/api/wishlist", wishlistRoutes);
 
 // Email routes
@@ -197,12 +230,69 @@ app.use("/api/settings", siteSettingRoutes);
 app.use("/api/compare", compareRoutes);
 
 // Reviews route
-app.use('/api/reviews', reviewRoutes);
-app.use('/api/home-settings', homeSettingsRoutes);
+app.use("/api/reviews", reviewRoutes);
+
+// Home Settings routes (with upload rate limiting for image operations)
+app.use("/api/home-settings", homeSettingsRoutes);
+
+// Test endpoint for home settings
+app.get("/api/home-settings/test", (req, res) => {
+  res.json({
+    success: true,
+    message: "Home settings API is working",
+    endpoints: {
+      basic: {
+        get: "GET /api/home-settings",
+        create: "POST /api/home-settings",
+        update: "PUT /api/home-settings",
+        partial: "PATCH /api/home-settings",
+        reset: "DELETE /api/home-settings/reset",
+      },
+      slider: {
+        add: "POST /api/home-settings/slider/slides",
+        update: "PUT /api/home-settings/slider/slides/:index",
+        delete: "DELETE /api/home-settings/slider/slides/:index",
+        settings: "PUT /api/home-settings/slider/settings",
+      },
+      heroOffers: {
+        add: "POST /api/home-settings/hero/offers",
+        update: "PUT /api/home-settings/hero/offers/:index",
+        delete: "DELETE /api/home-settings/hero/offers/:index",
+      },
+      partnerLogos: {
+        add: "POST /api/home-settings/partner-logos",
+        delete: "DELETE /api/home-settings/partner-logos",
+      },
+      promotionalSections: {
+        sectionOne: {
+          settings: "PUT /api/home-settings/promotional-section/settings",
+          addCard: "POST /api/home-settings/promotional-section/cards",
+          updateCard: "PUT /api/home-settings/promotional-section/cards/:index",
+          deleteCard: "DELETE /api/home-settings/promotional-section/cards/:index",
+        },
+        sectionTwo: {
+          settings: "PUT /api/home-settings/promotional-section-two/settings",
+          addCard: "POST /api/home-settings/promotional-section-two/cards",
+          updateCard: "PUT /api/home-settings/promotional-section-two/cards/:index",
+          deleteCard: "DELETE /api/home-settings/promotional-section-two/cards/:index",
+        },
+      },
+      catalogue: {
+        update: "PUT /api/home-settings/catalogue",
+      },
+      legacy: {
+        sidebarPromos: "POST/PUT/DELETE /api/home-settings/sidebar-promos",
+        offerCards: "POST/PUT/DELETE /api/home-settings/offer-cards",
+        ctaBanner: "PUT /api/home-settings/cta-banner",
+      },
+    },
+    timestamp: new Date().toISOString(),
+  });
+});
 
 // Test route
-app.get('/test-route', (req, res) => {
-  res.json({ success: true, message: 'Test route working' });
+app.get("/test-route", (req, res) => {
+  res.json({ success: true, message: "Test route working" });
 });
 
 /**
@@ -224,15 +314,33 @@ app.get("/api", (req, res) => {
         methods: ["GET"],
         description: "System health check with detailed metrics",
       },
+      homeSettings: {
+        url: `${baseUrl}/api/home-settings`,
+        methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+        description: "Home page dynamic content management",
+        documentation: `${baseUrl}/api/home-settings/test`,
+      },
       auth: {
         base: `${baseUrl}/api/auth`,
         endpoints: {
           register: { url: "/register", method: "POST", auth: false },
           login: { url: "/login", method: "POST", auth: false },
           profile: { url: "/profile", method: "GET", auth: true },
-          "change-password": { url: "/change-password", method: "PUT", auth: true },
-          "forgot-password": { url: "/forgot-password", method: "POST", auth: false },
-          "reset-password": { url: "/reset-password", method: "POST", auth: false },
+          "change-password": {
+            url: "/change-password",
+            method: "PUT",
+            auth: true,
+          },
+          "forgot-password": {
+            url: "/forgot-password",
+            method: "POST",
+            auth: false,
+          },
+          "reset-password": {
+            url: "/reset-password",
+            method: "POST",
+            auth: false,
+          },
         },
       },
       products: {
@@ -290,7 +398,12 @@ app.get("/api", (req, res) => {
           checkout: { url: "/checkout", method: "POST", auth: true },
           cancel: { url: "/:id/cancel", method: "PUT", auth: true },
           list: { url: "/", method: "GET", auth: true, role: "admin,editor" },
-          updateStatus: { url: "/:id/status", method: "PUT", auth: true, role: "admin,editor" },
+          updateStatus: {
+            url: "/:id/status",
+            method: "PUT",
+            auth: true,
+            role: "admin,editor",
+          },
         },
       },
       wishlist: {
@@ -319,7 +432,21 @@ app.get("/api", (req, res) => {
           updateProfile: { url: "/profile", method: "PUT", auth: true },
           addresses: { url: "/addresses", method: "GET", auth: true },
           addAddress: { url: "/addresses", method: "POST", auth: true },
-          deleteAddress: { url: "/addresses/:id", method: "DELETE", auth: true },
+          deleteAddress: {
+            url: "/addresses/:id",
+            method: "DELETE",
+            auth: true,
+          },
+        },
+      },
+      reviews: {
+        base: `${baseUrl}/api/reviews`,
+        endpoints: {
+          getProductReviews: { url: "/product/:productId", method: "GET", auth: false },
+          getUserReviews: { url: "/user/:userId", method: "GET", auth: true },
+          addReview: { url: "/", method: "POST", auth: true },
+          updateReview: { url: "/:id", method: "PUT", auth: true },
+          deleteReview: { url: "/:id", method: "DELETE", auth: true },
         },
       },
     },
@@ -341,6 +468,7 @@ app.use("*", (req, res) => {
       root: "/",
       api: "/api",
       health: "/api/health",
+      homeSettings: "/api/home-settings",
       documentation: "Please check the API documentation at / for more details",
     },
   });
@@ -348,12 +476,47 @@ app.use("*", (req, res) => {
 
 /**
  * ====================================
- * Error Handling Middleware
+ * Global Error Handling Middleware
  * ====================================
  */
 app.use((err, req, res, next) => {
   console.error("Error:", err.stack);
 
+  // Handle specific error types
+  if (err.name === "ValidationError") {
+    return res.status(400).json({
+      success: false,
+      error: "Validation Error",
+      message: err.message,
+      details: err.errors,
+    });
+  }
+
+  if (err.name === "CastError") {
+    return res.status(400).json({
+      success: false,
+      error: "Invalid ID format",
+      message: `Invalid ${err.path}: ${err.value}`,
+    });
+  }
+
+  if (err.code === 11000) {
+    return res.status(409).json({
+      success: false,
+      error: "Duplicate Key Error",
+      message: "A record with this value already exists",
+    });
+  }
+
+  if (err.message === "Not allowed by CORS") {
+    return res.status(403).json({
+      success: false,
+      error: "CORS Error",
+      message: "Origin not allowed",
+    });
+  }
+
+  // Default error response
   const status = err.status || 500;
   const message = err.message || "Internal Server Error";
 
@@ -362,6 +525,19 @@ app.use((err, req, res, next) => {
     error: message,
     ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
   });
+});
+
+// Graceful shutdown handling
+process.on("SIGTERM", () => {
+  console.log("SIGTERM signal received: closing HTTP server");
+  // Close server and database connections here
+  process.exit(0);
+});
+
+process.on("SIGINT", () => {
+  console.log("SIGINT signal received: closing HTTP server");
+  // Close server and database connections here
+  process.exit(0);
 });
 
 module.exports = app;
