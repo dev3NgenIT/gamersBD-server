@@ -45,6 +45,7 @@ const siteSettingRoutes = require("./routes/siteSetting.routes");
 const indexRoutes = require("./routes/index");
 const reviewRoutes = require("./routes/review.routes");
 const homeSettingsRoutes = require("./routes/homeSettings.routes");
+const searchRoutes = require('./routes/search.routes');
 
 // Initialize Express application
 const app = express();
@@ -234,6 +235,9 @@ app.use("/api/reviews", reviewRoutes);
 
 // Home Settings routes (with upload rate limiting for image operations)
 app.use("/api/home-settings", homeSettingsRoutes);
+
+// Search routes (protected)
+app.use('/api/search', searchRoutes);
 
 // Test endpoint for home settings
 app.get("/api/home-settings/test", (req, res) => {
